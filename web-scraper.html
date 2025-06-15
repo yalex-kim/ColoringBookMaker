@@ -34,26 +34,48 @@
             margin-bottom: 40px;
         }
 
-        .back-btn {
-            position: absolute;
-            top: 30px;
-            left: 30px;
-            background: rgba(255, 255, 255, 0.9);
+        .home-btn {
+            position: fixed;
+            top: 20px;
+            left: 20px;
+            background: linear-gradient(135deg, #667eea 0%, #764ba2 100%);
+            color: white;
             border: none;
             border-radius: 50px;
             padding: 12px 20px;
             cursor: pointer;
             font-size: 1rem;
+            font-weight: bold;
             transition: all 0.3s ease;
             display: flex;
             align-items: center;
             gap: 8px;
+            box-shadow: 0 4px 15px rgba(102, 126, 234, 0.3);
+            z-index: 1000;
         }
 
-        .back-btn:hover {
-            background: white;
-            transform: translateY(-2px);
-            box-shadow: 0 5px 15px rgba(0, 0, 0, 0.2);
+        .home-btn:hover {
+            transform: translateY(-3px) scale(1.05);
+            box-shadow: 0 8px 25px rgba(102, 126, 234, 0.4);
+            background: linear-gradient(135deg, #5a67d8 0%, #6b46c1 100%);
+        }
+
+        .home-btn:active {
+            transform: translateY(-1px) scale(1.02);
+        }
+
+        .home-icon {
+            font-size: 1.2rem;
+            transition: transform 0.3s ease;
+        }
+
+        .home-btn:hover .home-icon {
+            transform: rotate(-10deg) scale(1.1);
+        }
+
+        .home-text {
+            font-family: 'Arial', sans-serif;
+            letter-spacing: 0.5px;
         }
 
         .title {
@@ -289,6 +311,7 @@
             .container {
                 padding: 20px;
                 margin: 10px;
+                margin-top: 80px; /* 홈 버튼 공간 확보 */
             }
 
             .input-group {
@@ -300,23 +323,47 @@
                 gap: 15px;
             }
 
-            .back-btn {
-                position: static;
-                margin-bottom: 20px;
-                align-self: flex-start;
-            }
-
             .results-header {
                 flex-direction: column;
                 gap: 15px;
                 align-items: stretch;
             }
+
+            .home-btn {
+                position: fixed;
+                top: 15px;
+                left: 15px;
+                padding: 10px 16px;
+                font-size: 0.9rem;
+                border-radius: 25px;
+                box-shadow: 0 3px 12px rgba(102, 126, 234, 0.4);
+            }
+
+            .home-text {
+                display: none; /* 모바일에서는 아이콘만 표시 */
+            }
+
+            .home-btn:hover .home-text {
+                display: none;
+            }
+
+            /* 모바일에서 버튼 크기 조정 */
+            .home-btn {
+                min-width: 50px;
+                height: 50px;
+                justify-content: center;
+            }
+
+            .home-icon {
+                font-size: 1.4rem;
+            }
         }
     </style>
 </head>
 <body>
-    <button class="back-btn" onclick="goBack()">
-        ← 메인으로 돌아가기
+    <button class="home-btn" onclick="goHome()">
+        <span class="home-icon">🏠</span>
+        <span class="home-text">홈으로</span>
     </button>
 
     <div class="container">
@@ -377,10 +424,34 @@
         let selectedImages = [];
         let allSelected = false;
 
-        function goBack() {
-            if (confirm('메인 페이지로 돌아가시겠습니까?')) {
-                window.location.href = 'index.html';
-            }
+        function goHome() {
+            // 부드러운 페이드 아웃 효과
+            document.body.style.transition = 'opacity 0.3s ease';
+            document.body.style.opacity = '0.7';
+            
+            setTimeout(() => {
+                if (confirm('🏠 메인 페이지로 돌아가시겠습니까?\n\n현재 수집한 이미지 정보는 유지됩니다.')) {
+                    // 성공 메시지와 함께 이동
+                    const loadingDiv = document.createElement('div');
+                    loadingDiv.innerHTML = `
+                        <div style="position: fixed; top: 0; left: 0; right: 0; bottom: 0; background: rgba(102, 126, 234, 0.95); display: flex; align-items: center; justify-content: center; z-index: 10000;">
+                            <div style="text-align: center; color: white;">
+                                <div style="font-size: 3rem; margin-bottom: 20px;">🏠</div>
+                                <h2 style="margin: 0 0 15px 0;">메인 페이지로 이동 중...</h2>
+                                <p style="margin: 0; opacity: 0.8;">잠시만 기다려주세요</p>
+                            </div>
+                        </div>
+                    `;
+                    document.body.appendChild(loadingDiv);
+                    
+                    setTimeout(() => {
+                        window.location.href = 'index.html';
+                    }, 1000);
+                } else {
+                    // 취소 시 원래 상태로 복원
+                    document.body.style.opacity = '1';
+                }
+            }, 150);
         }
 
         function setExampleUrl(url) {
@@ -412,82 +483,234 @@
             hideResults();
 
             try {
-                // CORS 프록시를 사용하여 웹사이트 내용 가져오기
-                const proxyUrl = 'https://api.allorigins.win/get?url=';
-                const response = await fetch(proxyUrl + encodeURIComponent(url));
+                // 1단계: 웹사이트 접근
+                updateScrapingStep(1, 'loading', '웹사이트 접근 중...');
+                const htmlContent = await fetchWebsiteWithFallback(url);
+                updateScrapingStep(1, 'success', '웹사이트 접근 성공!');
                 
-                if (!response.ok) {
-                    throw new Error('웹사이트에 접근할 수 없습니다.');
-                }
-
-                const data = await response.json();
-                const htmlContent = data.contents;
-                
-                // HTML 파싱하여 이미지 찾기
+                // 2단계: HTML 분석
+                updateScrapingStep(2, 'loading', 'HTML 분석 중...');
                 const parser = new DOMParser();
                 const doc = parser.parseFromString(htmlContent, 'text/html');
                 const images = doc.querySelectorAll('img');
+                updateScrapingStep(2, 'success', `HTML 분석 완료 (${images.length}개 img 태그 발견)`);
                 
+                // 3단계: 이미지 URL 수집
+                updateScrapingStep(3, 'loading', '이미지 URL 수집 중...');
                 allImages = [];
                 const baseUrl = new URL(url).origin;
+                const urlPath = new URL(url).pathname.replace(/\/[^\/]*$/, '');
+                
+                // 이미지 URL 정규화 및 수집
+                const imagePromises = [];
+                let validUrlCount = 0;
                 
                 for (let img of images) {
-                    let src = img.src || img.getAttribute('data-src') || img.getAttribute('data-lazy');
+                    let src = img.src || img.getAttribute('data-src') || img.getAttribute('data-lazy') || 
+                             img.getAttribute('data-original') || img.getAttribute('srcset')?.split(' ')[0];
                     
                     if (src) {
                         // 상대 경로를 절대 경로로 변환
-                        if (src.startsWith('/')) {
-                            src = baseUrl + src;
-                        } else if (src.startsWith('./')) {
-                            src = url + '/' + src.substring(2);
-                        } else if (!src.startsWith('http')) {
-                            src = url + '/' + src;
-                        }
-
-                        // 이미지 크기 체크
-                        const imageInfo = await checkImageSize(src);
-                        if (imageInfo && imageInfo.width > 100 && imageInfo.height > 100) {
-                            allImages.push({
-                                src: src,
-                                alt: img.alt || '이미지',
-                                width: imageInfo.width,
-                                height: imageInfo.height
-                            });
+                        src = normalizeImageUrl(src, baseUrl, url, urlPath);
+                        
+                        if (src && isImageUrl(src)) {
+                            validUrlCount++;
+                            imagePromises.push(
+                                checkImageSizeWithFallback(src).then(imageInfo => {
+                                    if (imageInfo && imageInfo.width > 50 && imageInfo.height > 50) {
+                                        return {
+                                            src: src,
+                                            alt: img.alt || img.title || extractImageName(src),
+                                            width: imageInfo.width,
+                                            height: imageInfo.height
+                                        };
+                                    }
+                                    return null;
+                                }).catch(() => null)
+                            );
                         }
                     }
                 }
+                
+                updateScrapingStep(3, 'success', `이미지 URL 수집 완료 (${validUrlCount}개 유효 URL)`);
+
+                // 4단계: 이미지 크기 확인
+                updateScrapingStep(4, 'loading', `이미지 크기 확인 중 (0/${validUrlCount})`);
+                
+                // 진행상황 업데이트를 위한 Promise 감시
+                let completedCount = 0;
+                const results = await Promise.all(imagePromises.map(async (promise, index) => {
+                    const result = await promise;
+                    completedCount++;
+                    updateScrapingStep(4, 'loading', `이미지 크기 확인 중 (${completedCount}/${validUrlCount})`);
+                    return result;
+                }));
+                
+                allImages = results.filter(img => img !== null);
+                updateScrapingStep(4, 'success', `이미지 크기 확인 완료 (${allImages.length}개 사용 가능)`);
 
                 // 중복 제거
+                const beforeDedupe = allImages.length;
                 allImages = allImages.filter((img, index, arr) => 
                     arr.findIndex(item => item.src === img.src) === index
                 );
 
+                if (allImages.length !== beforeDedupe) {
+                    console.log(`중복 제거: ${beforeDedupe - allImages.length}개 제거됨`);
+                }
+
                 if (allImages.length === 0) {
-                    showError('해당 웹사이트에서 적절한 크기의 이미지를 찾을 수 없습니다.');
+                    showError('해당 웹사이트에서 적절한 크기의 이미지를 찾을 수 없습니다.\n\n다른 웹사이트를 시도하거나, 이미지 URL을 직접 입력해보세요.');
                 } else {
                     displayImages();
                 }
 
             } catch (error) {
                 console.error('Error:', error);
-                showError('이미지 수집 중 오류가 발생했습니다: ' + error.message);
+                
+                // 단계별 에러 표시
+                if (error.message.includes('프록시')) {
+                    updateScrapingStep(1, 'failed', '웹사이트 접근 실패');
+                } else {
+                    updateScrapingStep(4, 'failed', '처리 중 오류 발생');
+                }
+                
+                showError(`이미지 수집 중 오류가 발생했습니다.\n\n${error.message}\n\n다른 웹사이트를 시도하거나 이미지 URL을 직접 입력해보세요.`);
             } finally {
                 showLoading(false);
             }
         }
 
-        function checkImageSize(src) {
+        async function fetchWebsiteWithFallback(url) {
+            const proxies = [
+                'https://api.allorigins.win/get?url=',
+                'https://corsproxy.io/?',
+                'https://cors-anywhere.herokuapp.com/',
+                'https://thingproxy.freeboard.io/fetch/'
+            ];
+
+            for (let i = 0; i < proxies.length; i++) {
+                try {
+                    console.log(`Trying proxy ${i + 1}/${proxies.length}: ${proxies[i]}`);
+                    
+                    let response;
+                    if (proxies[i].includes('allorigins')) {
+                        response = await fetch(proxies[i] + encodeURIComponent(url));
+                        const data = await response.json();
+                        if (data.contents) {
+                            return data.contents;
+                        }
+                    } else {
+                        response = await fetch(proxies[i] + encodeURIComponent(url));
+                        if (response.ok) {
+                            return await response.text();
+                        }
+                    }
+                } catch (error) {
+                    console.log(`Proxy ${i + 1} failed:`, error.message);
+                    if (i === proxies.length - 1) {
+                        throw new Error('모든 프록시 서버 접근에 실패했습니다. 직접 이미지 URL을 입력해보세요.');
+                    }
+                }
+            }
+        }
+
+        function normalizeImageUrl(src, baseUrl, originalUrl, urlPath) {
+            try {
+                // 이미 완전한 URL인 경우
+                if (src.startsWith('http')) {
+                    return src;
+                }
+                
+                // 프로토콜 상대 URL (//example.com/image.jpg)
+                if (src.startsWith('//')) {
+                    return 'https:' + src;
+                }
+                
+                // 절대 경로 (/images/photo.jpg)
+                if (src.startsWith('/')) {
+                    return baseUrl + src;
+                }
+                
+                // 상대 경로 (./image.jpg, ../image.jpg, image.jpg)
+                if (src.startsWith('./')) {
+                    return originalUrl.substring(0, originalUrl.lastIndexOf('/') + 1) + src.substring(2);
+                }
+                
+                if (src.startsWith('../')) {
+                    const pathParts = urlPath.split('/').filter(p => p);
+                    const srcParts = src.split('/');
+                    let upCount = 0;
+                    
+                    for (let part of srcParts) {
+                        if (part === '..') {
+                            upCount++;
+                        } else {
+                            break;
+                        }
+                    }
+                    
+                    const remainingPath = pathParts.slice(0, Math.max(0, pathParts.length - upCount));
+                    const remainingSrc = srcParts.slice(upCount);
+                    
+                    return baseUrl + '/' + remainingPath.concat(remainingSrc).join('/');
+                }
+                
+                // 기본 상대 경로
+                return originalUrl.substring(0, originalUrl.lastIndexOf('/') + 1) + src;
+                
+            } catch (error) {
+                console.log('URL normalization failed:', error);
+                return null;
+            }
+        }
+
+        function isImageUrl(url) {
+            const imageExtensions = ['.jpg', '.jpeg', '.png', '.gif', '.webp', '.bmp', '.svg', '.tiff', '.ico'];
+            const lowUrl = url.toLowerCase();
+            
+            return imageExtensions.some(ext => lowUrl.includes(ext)) ||
+                   lowUrl.includes('image') ||
+                   lowUrl.includes('photo') ||
+                   lowUrl.includes('pic') ||
+                   lowUrl.includes('/img/') ||
+                   lowUrl.includes('upload') ||
+                   lowUrl.includes('media');
+        }
+
+        function extractImageName(url) {
+            try {
+                const path = new URL(url).pathname;
+                const filename = path.split('/').pop();
+                return filename || '이미지';
+            } catch {
+                return '이미지';
+            }
+        }
+
+        async function checkImageSizeWithFallback(src) {
             return new Promise((resolve) => {
                 const img = new Image();
+                img.crossOrigin = 'anonymous';
+                
+                const timeout = setTimeout(() => {
+                    resolve({ width: 200, height: 200 }); // 기본값 반환
+                }, 5000);
+                
                 img.onload = function() {
+                    clearTimeout(timeout);
                     resolve({
                         width: this.naturalWidth,
                         height: this.naturalHeight
                     });
                 };
+                
                 img.onerror = function() {
-                    resolve(null);
+                    clearTimeout(timeout);
+                    // 실패해도 기본 크기로 포함 (실제 로딩은 converter에서 재시도)
+                    resolve({ width: 200, height: 200 });
                 };
+                
                 img.src = src;
             });
         }
@@ -604,14 +827,136 @@
         }
 
         function showLoading(show) {
-            document.getElementById('loading').style.display = show ? 'block' : 'none';
+            const loadingElement = document.getElementById('loading');
+            
+            if (show) {
+                loadingElement.innerHTML = `
+                    <div style="text-align: center; padding: 30px;">
+                        <div style="display: inline-block; width: 50px; height: 50px; border: 5px solid #f3f3f3; border-top: 5px solid #667eea; border-radius: 50%; animation: spin 1s linear infinite; margin-bottom: 20px;"></div>
+                        <h3 style="color: #667eea; margin-bottom: 15px;">🌐 웹사이트 분석 중...</h3>
+                        <p style="color: #666; margin-bottom: 20px;">웹사이트에서 이미지를 수집하고 있습니다</p>
+                        
+                        <div id="scrapingSteps" style="max-width: 400px; margin: 0 auto; background: white; padding: 20px; border-radius: 15px; box-shadow: 0 2px 10px rgba(0,0,0,0.1);">
+                            <div id="scrapingStep1" style="padding: 8px 0; color: #667eea; font-weight: bold;">
+                                <span style="display: inline-block; width: 20px;">⏳</span> 웹사이트 접근 중...
+                            </div>
+                            <div id="scrapingStep2" style="padding: 8px 0; color: #999;">
+                                <span style="display: inline-block; width: 20px;">⏸️</span> HTML 분석 대기 중
+                            </div>
+                            <div id="scrapingStep3" style="padding: 8px 0; color: #999;">
+                                <span style="display: inline-block; width: 20px;">⏸️</span> 이미지 URL 수집 대기 중
+                            </div>
+                            <div id="scrapingStep4" style="padding: 8px 0; color: #999;">
+                                <span style="display: inline-block; width: 20px;">⏸️</span> 이미지 크기 확인 대기 중
+                            </div>
+                        </div>
+                        
+                        <p style="color: #888; font-size: 0.9rem; margin-top: 20px;">
+                            잠시만 기다려주세요... 사이트에 따라 시간이 걸릴 수 있습니다
+                        </p>
+                    </div>
+                `;
+                loadingElement.style.display = 'block';
+            } else {
+                loadingElement.style.display = 'none';
+            }
+            
             document.getElementById('scrapeBtn').disabled = show;
+        }
+
+        function updateScrapingStep(stepNumber, status, message) {
+            const stepElement = document.getElementById(`scrapingStep${stepNumber}`);
+            if (stepElement) {
+                const icon = status === 'loading' ? '⏳' : 
+                           status === 'success' ? '✅' : 
+                           status === 'failed' ? '❌' : '⏸️';
+                
+                const color = status === 'loading' ? '#667eea' : 
+                            status === 'success' ? '#2e7d32' : 
+                            status === 'failed' ? '#d32f2f' : '#999';
+                
+                stepElement.style.color = color;
+                stepElement.style.fontWeight = status === 'loading' ? 'bold' : 'normal';
+                stepElement.innerHTML = `<span style="display: inline-block; width: 20px;">${icon}</span> ${message}`;
+            }
         }
 
         function showError(message) {
             const errorElement = document.getElementById('errorMessage');
-            errorElement.textContent = message;
+            
+            // 메시지 유형에 따른 아이콘과 제목 설정
+            let icon = '❌';
+            let title = '오류 발생';
+            let bgColor = '#ffe6e6';
+            let borderColor = '#d32f2f';
+            
+            if (message.includes('CORS') || message.includes('프록시')) {
+                icon = '🔒';
+                title = 'CORS 접근 제한';
+                bgColor = '#fff3cd';
+                borderColor = '#ffc107';
+            } else if (message.includes('이미지를 찾을 수 없습니다')) {
+                icon = '🖼️';
+                title = '이미지 없음';
+                bgColor = '#e8f4f8';
+                borderColor = '#26c6da';
+            }
+            
+            errorElement.innerHTML = `
+                <div style="background: ${bgColor}; border: 2px solid ${borderColor}; border-radius: 10px; padding: 20px; margin: 20px 0;">
+                    <h4 style="color: #333; margin-bottom: 15px;">${icon} ${title}</h4>
+                    <p style="color: #666; margin-bottom: 20px; line-height: 1.6;">${message}</p>
+                    
+                    <div style="background: white; padding: 15px; border-radius: 8px; margin: 15px 0; border-left: 4px solid ${borderColor};">
+                        <h5 style="color: #333; margin-bottom: 15px;">💡 권장 해결 방법:</h5>
+                        
+                        <div style="display: grid; gap: 10px;">
+                            <div style="display: flex; align-items: start; gap: 10px;">
+                                <span style="background: #2196f3; color: white; border-radius: 50%; width: 24px; height: 24px; display: flex; align-items: center; justify-content: center; font-size: 0.8rem; font-weight: bold; flex-shrink: 0;">1</span>
+                                <div>
+                                    <strong style="color: #1976d2;">이미지 갤러리 사이트 사용</strong>
+                                    <p style="margin: 5px 0 0 0; color: #666; font-size: 0.9rem;">Unsplash, Pixabay 등 공개 이미지 사이트를 시도해보세요</p>
+                                </div>
+                            </div>
+                            
+                            <div style="display: flex; align-items: start; gap: 10px;">
+                                <span style="background: #ff9800; color: white; border-radius: 50%; width: 24px; height: 24px; display: flex; align-items: center; justify-content: center; font-size: 0.8rem; font-weight: bold; flex-shrink: 0;">2</span>
+                                <div>
+                                    <strong style="color: #f57c00;">이미지 URL 직접 입력</strong>
+                                    <p style="margin: 5px 0 0 0; color: #666; font-size: 0.9rem;">변환 페이지에서 이미지 주소를 직접 붙여넣기</p>
+                                </div>
+                            </div>
+                            
+                            <div style="display: flex; align-items: start; gap: 10px;">
+                                <span style="background: #4caf50; color: white; border-radius: 50%; width: 24px; height: 24px; display: flex; align-items: center; justify-content: center; font-size: 0.8rem; font-weight: bold; flex-shrink: 0;">3</span>
+                                <div>
+                                    <strong style="color: #388e3c;">이미지 다운로드 후 업로드</strong>
+                                    <p style="margin: 5px 0 0 0; color: #666; font-size: 0.9rem;">이미지를 저장한 후 직접 업로드 방식 사용</p>
+                                </div>
+                            </div>
+                        </div>
+                    </div>
+                    
+                    <div style="display: flex; gap: 10px; justify-content: center; flex-wrap: wrap; margin-top: 20px;">
+                        <button onclick="hideError(); setExampleUrl('https://picsum.photos/')" style="background: #2196f3; color: white; border: none; padding: 10px 20px; border-radius: 8px; cursor: pointer; font-weight: bold;">
+                            🖼️ 예시 사이트 시도
+                        </button>
+                        <button onclick="goToConverter()" style="background: #4caf50; color: white; border: none; padding: 10px 20px; border-radius: 8px; cursor: pointer; font-weight: bold;">
+                            🎨 직접 변환하기
+                        </button>
+                        <button onclick="hideError()" style="background: #ccc; color: #333; border: none; padding: 10px 20px; border-radius: 8px; cursor: pointer;">
+                            닫기
+                        </button>
+                    </div>
+                </div>
+            `;
+            
             errorElement.style.display = 'block';
+            errorElement.scrollIntoView({ behavior: 'smooth', block: 'center' });
+        }
+
+        function goToConverter() {
+            window.location.href = 'coloring-converter.html';
         }
 
         function hideError() {
