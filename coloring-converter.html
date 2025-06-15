@@ -432,6 +432,13 @@
         <div class="header">
             <h1>🎨 사진 → 컬러링북 변환기</h1>
             <p>사진을 업로드하면 컬러링북으로 변환해드려요!</p>
+        <!-- 디버그 상태 표시 영역 (개발 모드) -->
+        <div id="debugStatus" style="display: none; position: fixed; bottom: 20px; left: 20px; background: rgba(0,0,0,0.8); color: white; padding: 10px 15px; border-radius: 8px; font-family: monospace; font-size: 0.8rem; z-index: 1001; max-width: 300px;">
+            <div style="display: flex; justify-content: space-between; align-items: center; margin-bottom: 5px;">
+                <span>🔧 Debug Info</span>
+                <button onclick="toggleDebugStatus()" style="background: none; border: none; color: white; cursor: pointer; font-size: 0.8rem;">×</button>
+            </div>
+            <div id="debugContent"></div>
         </div>
 
         <div class="upload-section">
@@ -587,29 +594,182 @@
         }
 
         function checkWebImages() {
+            console.log('🔍 웹 이미지 데이터 확인 시작...');
+            
             const savedImages = localStorage.getItem('selectedImages');
-            if (savedImages) {
-                try {
-                    webImages = JSON.parse(savedImages);
-                    if (webImages.length > 0) {
-                        displayWebImages();
-                        // 업로드 섹션 숨기기
-                        document.getElementById('uploadSection').style.display = 'none';
-                        
-                        // 성공 메시지 표시
-                        showWebImagesLoadSuccess();
-                    } else {
-                        showNoWebImagesMessage();
-                    }
-                } catch (error) {
-                    console.error('Error parsing saved images:', error);
-                    localStorage.removeItem('selectedImages');
-                    showWebImagesLoadError();
-                }
-            } else {
-                // localStorage에 데이터가 없는 경우 안내 메시지
+            console.log('📦 localStorage 원본 데이터:', savedImages);
+            
+            if (!savedImages) {
+                console.log('❌ localStorage에 데이터 없음');
                 showNoWebImagesMessage();
+                return;
             }
+            
+            // 데이터 유효성 검사
+            if (savedImages.trim() === '' || savedImages === 'null' || savedImages === 'undefined') {
+                console.log('❌ 빈 데이터 또는 null 값');
+                localStorage.removeItem('selectedImages');
+                showWebImagesLoadError('저장된 데이터가 비어있습니다.');
+                return;
+            }
+            
+            try {
+                // JSON 파싱 시도
+                const parsedData = JSON.parse(savedImages);
+                console.log('✅ JSON 파싱 성공:', parsedData);
+                
+                // 데이터 구조 검증
+                if (!Array.isArray(parsedData)) {
+                    console.log('❌ 데이터가 배열이 아님:', typeof parsedData);
+                    throw new Error('데이터 형식이 올바르지 않습니다 (배열이 아님)');
+                }
+                
+                // 배열 요소 검증
+                if (parsedData.length === 0) {
+                    console.log('⚠️ 빈 배열');
+                    showNoWebImagesMessage();
+                    return;
+                }
+                
+                // 각 이미지 객체 검증
+                const validImages = [];
+                parsedData.forEach((image, index) => {
+                    console.log(`🔍 이미지 ${index + 1} 검증:`, image);
+                    
+                    if (image && typeof image === 'object' && image.src) {
+                        // 필수 속성 확인 및 기본값 설정
+                        const validImage = {
+                            src: image.src,
+                            alt: image.alt || `이미지 ${index + 1}`,
+                            width: image.width || 200,
+                            height: image.height || 200
+                        };
+                        validImages.push(validImage);
+                        console.log(`✅ 이미지 ${index + 1} 유효함`);
+                    } else {
+                        console.log(`❌ 이미지 ${index + 1} 무효함:`, image);
+                    }
+                });
+                
+                if (validImages.length === 0) {
+                    console.log('❌ 유효한 이미지 없음');
+                    throw new Error('유효한 이미지 데이터가 없습니다');
+                }
+                
+                // 전역 변수에 할당
+                webImages = validImages;
+                console.log(`✅ ${validImages.length}개 이미지 로드 완료`);
+                
+                displayWebImages();
+                document.getElementById('uploadSection').style.display = 'none';
+                showWebImagesLoadSuccess();
+                
+            } catch (error) {
+                console.error('❌ 데이터 파싱 오류:', error);
+                console.log('📋 에러 세부사항:', {
+                    message: error.message,
+                    data: savedImages.substring(0, 200) + '...',
+                    dataLength: savedImages.length
+                });
+                
+                // 손상된 데이터 제거
+                localStorage.removeItem('selectedImages');
+                showWebImagesLoadError(error.message);
+            }
+        }
+
+        function showWebImagesLoadError(errorMessage = '알 수 없는 오류') {
+            console.log('🚨 웹 이미지 로드 에러 표시:', errorMessage);
+            
+            const errorDiv = document.createElement('div');
+            errorDiv.innerHTML = `
+                <div style="background: #ffe6e6; border: 2px solid #ff4444; border-radius: 15px; padding: 25px; margin: 20px 0; text-align: center;">
+                    <div style="font-size: 3rem; margin-bottom: 15px;">🚨</div>
+                    <h3 style="color: #d32f2f; margin-bottom: 15px;">웹 이미지 데이터 오류</h3>
+                    <p style="color: #666; margin-bottom: 20px; background: white; padding: 15px; border-radius: 8px; border-left: 4px solid #ff4444;">
+                        <strong>오류 내용:</strong> ${errorMessage}
+                    </p>
+                    
+                    <div style="background: white; padding: 20px; border-radius: 10px; margin: 20px 0; text-align: left;">
+                        <h4 style="color: #333; margin-bottom: 15px;">🔧 해결 방법:</h4>
+                        
+                        <div style="display: grid; gap: 15px;">
+                            <div style="display: flex; align-items: start; gap: 12px; padding: 12px; background: #f8f9fa; border-radius: 8px;">
+                                <span style="background: #2196f3; color: white; border-radius: 50%; width: 24px; height: 24px; display: flex; align-items: center; justify-content: center; font-size: 0.8rem; font-weight: bold; flex-shrink: 0;">1</span>
+                                <div>
+                                    <strong style="color: #1976d2;">웹 수집 다시 시도</strong>
+                                    <p style="margin: 5px 0 0 0; color: #666; font-size: 0.9rem;">웹 스크래핑 페이지에서 이미지를 다시 수집해주세요</p>
+                                </div>
+                            </div>
+                            
+                            <div style="display: flex; align-items: start; gap: 12px; padding: 12px; background: #f8f9fa; border-radius: 8px;">
+                                <span style="background: #ff9800; color: white; border-radius: 50%; width: 24px; height: 24px; display: flex; align-items: center; justify-content: center; font-size: 0.8rem; font-weight: bold; flex-shrink: 0;">2</span>
+                                <div>
+                                    <strong style="color: #f57c00;">브라우저 데이터 초기화</strong>
+                                    <p style="margin: 5px 0 0 0; color: #666; font-size: 0.9rem;">개발자 도구 → Application → Local Storage 비우기</p>
+                                </div>
+                            </div>
+                            
+                            <div style="display: flex; align-items: start; gap: 12px; padding: 12px; background: #f8f9fa; border-radius: 8px;">
+                                <span style="background: #4caf50; color: white; border-radius: 50%; width: 24px; height: 24px; display: flex; align-items: center; justify-content: center; font-size: 0.8rem; font-weight: bold; flex-shrink: 0;">3</span>
+                                <div>
+                                    <strong style="color: #388e3c;">직접 업로드 사용</strong>
+                                    <p style="margin: 5px 0 0 0; color: #666; font-size: 0.9rem;">이미지를 컴퓨터에 저장 후 직접 업로드하기</p>
+                                </div>
+                            </div>
+                        </div>
+                    </div>
+                    
+                    <div style="display: flex; gap: 15px; justify-content: center; flex-wrap: wrap; margin-top: 25px;">
+                        <button onclick="clearDataAndRetry()" style="background: #2196f3; color: white; border: none; padding: 12px 24px; border-radius: 8px; cursor: pointer; font-weight: bold; font-size: 1rem;">
+                            🔄 데이터 초기화 후 재시도
+                        </button>
+                        <button onclick="goToWebScraper()" style="background: #ff9800; color: white; border: none; padding: 12px 24px; border-radius: 8px; cursor: pointer; font-weight: bold; font-size: 1rem;">
+                            🌐 웹 수집 페이지로
+                        </button>
+                        <button onclick="showUploadSection()" style="background: #4caf50; color: white; border: none; padding: 12px 24px; border-radius: 8px; cursor: pointer; font-weight: bold; font-size: 1rem;">
+                            📁 직접 업로드
+                        </button>
+                        <button onclick="showQuickFixPanel()" style="background: #9c27b0; color: white; border: none; padding: 12px 24px; border-radius: 8px; cursor: pointer; font-weight: bold; font-size: 1rem;">
+                            🛠️ 고급 해결
+                        </button>
+                    </div>
+                    
+                    <details style="margin-top: 20px; text-align: left; background: #f5f5f5; padding: 15px; border-radius: 8px;">
+                        <summary style="cursor: pointer; color: #666; font-weight: bold;">🔍 개발자 정보 (클릭하여 펼치기)</summary>
+                        <div style="margin-top: 10px; font-family: monospace; font-size: 0.8rem; color: #333;">
+                            <p><strong>에러:</strong> ${errorMessage}</p>
+                            <p><strong>시간:</strong> ${new Date().toLocaleString()}</p>
+                            <p><strong>localStorage 크기:</strong> ${localStorage.length} 항목</p>
+                            <p><strong>브라우저:</strong> ${navigator.userAgent.split(' ')[0]}</p>
+                            <div style="margin-top: 10px; padding: 10px; background: white; border-radius: 5px; border: 1px solid #ddd;">
+                                <strong>콘솔 명령어:</strong><br>
+                                <code>fix.help()</code> - 도움말<br>
+                                <code>fix.clear()</code> - 완전 초기화<br>
+                                <code>fix.test()</code> - 테스트 데이터
+                            </div>
+                        </div>
+                    </details>
+                </div>
+            `;
+            
+            const container = document.querySelector('.container');
+            container.insertBefore(errorDiv, container.firstChild);
+            
+            // 에러 영역으로 스크롤
+            errorDiv.scrollIntoView({ behavior: 'smooth', block: 'center' });
+        }
+
+        function clearDataAndRetry() {
+            console.log('🧹 localStorage 데이터 초기화...');
+            
+            // 모든 관련 데이터 제거
+            localStorage.removeItem('selectedImages');
+            localStorage.removeItem('webImages');
+            localStorage.removeItem('currentImage');
+            
+            // 페이지 새로고침
+            window.location.reload();
         }
 
         function showWebImagesLoadSuccess() {
@@ -1232,6 +1392,233 @@
                 document.getElementById('uploadSection').scrollIntoView({ behavior: 'smooth' });
             }
         }
+
+        // 디버깅 및 문제 해결을 위한 유틸리티 함수들
+        function debugLocalStorage() {
+            console.log('=== localStorage 디버그 정보 ===');
+            console.log('전체 localStorage 항목들:');
+            
+            for (let i = 0; i < localStorage.length; i++) {
+                const key = localStorage.key(i);
+                const value = localStorage.getItem(key);
+                console.log(`${key}: ${value ? value.substring(0, 100) + '...' : 'null'}`);
+            }
+            
+            console.log('selectedImages 상세 정보:');
+            const selectedImages = localStorage.getItem('selectedImages');
+            if (selectedImages) {
+                console.log('데이터 길이:', selectedImages.length);
+                console.log('데이터 타입:', typeof selectedImages);
+                console.log('첫 100자:', selectedImages.substring(0, 100));
+                
+                try {
+                    const parsed = JSON.parse(selectedImages);
+                    console.log('파싱 성공, 타입:', typeof parsed);
+                    console.log('배열 여부:', Array.isArray(parsed));
+                    if (Array.isArray(parsed)) {
+                        console.log('배열 길이:', parsed.length);
+                        console.log('첫 번째 요소:', parsed[0]);
+                    }
+                } catch (e) {
+                    console.log('파싱 오류:', e.message);
+                }
+            } else {
+                console.log('selectedImages 없음');
+            }
+            console.log('=== 디버그 정보 끝 ===');
+        }
+
+        // 개발자 도구에서 사용할 수 있는 유틸리티 함수들
+        window.debugUtils = {
+            // localStorage 완전 초기화
+            clearAll: () => {
+                localStorage.clear();
+                console.log('✅ localStorage 완전 초기화 완료');
+                window.location.reload();
+            },
+            
+            // 특정 키만 제거
+            clearKey: (key) => {
+                localStorage.removeItem(key);
+                console.log(`✅ ${key} 제거 완료`);
+            },
+            
+            // 모든 localStorage 내용 출력
+            showAll: () => {
+                console.table(localStorage);
+            },
+            
+            // 테스트 데이터 생성
+            createTestData: () => {
+                const testData = [
+                    {
+                        src: 'https://picsum.photos/300/200',
+                        alt: '테스트 이미지 1',
+                        width: 300,
+                        height: 200
+                    },
+                    {
+                        src: 'https://picsum.photos/400/300',
+                        alt: '테스트 이미지 2', 
+                        width: 400,
+                        height: 300
+                    }
+                ];
+                localStorage.setItem('selectedImages', JSON.stringify(testData));
+                console.log('✅ 테스트 데이터 생성 완료');
+                window.location.reload();
+            }
+        };
+
+        console.log(`
+🔧 디버그 유틸리티 사용법:
+- debugUtils.clearAll()     : localStorage 완전 초기화
+- debugUtils.clearKey('selectedImages') : 특정 키 제거  
+- debugUtils.showAll()      : 모든 데이터 출력
+- debugUtils.createTestData() : 테스트 데이터 생성
+
+🎯 빠른 디버깅:
+- Ctrl+Shift+D : 빠른 해결 패널
+- Ctrl+Shift+I : 실시간 상태 표시
+- ?debug=true  : URL로 디버그 모드 자동 시작
+
+💡 문제 해결 순서:
+1. F12 눌러서 콘솔 열기
+2. debugUtils.showAll() 로 데이터 확인
+3. debugUtils.clearAll() 로 초기화
+4. 웹 스크래퍼에서 다시 이미지 수집
+        `);
+
+        // 글로벌 함수로 빠른 접근 제공
+        window.fix = {
+            clear: () => debugUtils.clearAll(),
+            reset: () => debugUtils.clearKey('selectedImages'),
+            test: () => debugUtils.createTestData(),
+            debug: () => toggleDebugStatus(),
+            help: () => console.log(`
+🚨 웹 이미지 데이터 오류 해결 방법:
+
+1. fix.clear()  - 모든 데이터 초기화 (강력)
+2. fix.reset()  - 이미지 데이터만 초기화
+3. fix.test()   - 테스트 데이터로 시험
+4. fix.debug()  - 실시간 상태 보기
+
+문제가 계속되면 웹 스크래퍼에서 이미지를 다시 수집하세요.
+            `)
+        };
+
+        console.log('💊 빠른 해결: fix.help() 명령어로 도움말 보기');
+
+        // 에러 발생 시 자동으로 도움말 표시
+        window.addEventListener('error', (e) => {
+            if (e.message.includes('localStorage') || e.message.includes('JSON')) {
+                console.error('❌ localStorage 관련 오류 감지!');
+                console.log('🔧 fix.help() 명령어로 해결 방법을 확인하세요.');
+            }
+        });
+
+        function showQuickFixPanel() {
+            const existingPanel = document.getElementById('quickFixPanel');
+            if (existingPanel) {
+                existingPanel.remove();
+                return;
+            }
+
+            const panel = document.createElement('div');
+            panel.id = 'quickFixPanel';
+            panel.innerHTML = `
+                <div style="position: fixed; top: 20px; right: 20px; background: white; border: 2px solid #2196f3; border-radius: 15px; padding: 20px; box-shadow: 0 10px 30px rgba(0,0,0,0.2); z-index: 9999; max-width: 300px;">
+                    <div style="display: flex; justify-content: between; align-items: center; margin-bottom: 15px;">
+                        <h4 style="margin: 0; color: #2196f3;">🛠️ 빠른 해결</h4>
+                        <button onclick="document.getElementById('quickFixPanel').remove()" style="background: none; border: none; font-size: 1.2rem; cursor: pointer; color: #999;">×</button>
+                    </div>
+                    
+                    <div style="display: grid; gap: 10px;">
+                        <button onclick="debugUtils.clearAll()" style="background: #f44336; color: white; border: none; padding: 8px 12px; border-radius: 6px; cursor: pointer; font-size: 0.9rem;">
+                            🗑️ 모든 데이터 초기화
+                        </button>
+                        
+                        <button onclick="debugUtils.clearKey('selectedImages')" style="background: #ff9800; color: white; border: none; padding: 8px 12px; border-radius: 6px; cursor: pointer; font-size: 0.9rem;">
+                            🔄 이미지 데이터만 초기화
+                        </button>
+                        
+                        <button onclick="debugUtils.createTestData()" style="background: #4caf50; color: white; border: none; padding: 8px 12px; border-radius: 6px; cursor: pointer; font-size: 0.9rem;">
+                            🧪 테스트 데이터 생성
+                        </button>
+                        
+                        <button onclick="debugLocalStorage()" style="background: #2196f3; color: white; border: none; padding: 8px 12px; border-radius: 6px; cursor: pointer; font-size: 0.9rem;">
+                            🔍 콘솔에 정보 출력
+                        </button>
+                    </div>
+                    
+                    <p style="font-size: 0.7rem; color: #666; margin-top: 15px; margin-bottom: 0;">
+                        F12를 눌러 개발자 도구 콘솔을 확인하세요
+                    </p>
+                </div>
+            `;
+            
+            document.body.appendChild(panel);
+        }
+
+        // Ctrl+Shift+D 키 조합으로 디버그 패널 열기
+        document.addEventListener('keydown', (e) => {
+            if (e.ctrlKey && e.shiftKey && e.key === 'D') {
+                e.preventDefault();
+                showQuickFixPanel();
+            }
+            
+            // Ctrl+Shift+I 키 조합으로 디버그 상태 토글
+            if (e.ctrlKey && e.shiftKey && e.key === 'I') {
+                e.preventDefault();
+                toggleDebugStatus();
+            }
+        });
+
+        function toggleDebugStatus() {
+            const debugStatus = document.getElementById('debugStatus');
+            const isVisible = debugStatus.style.display !== 'none';
+            
+            if (isVisible) {
+                debugStatus.style.display = 'none';
+                clearInterval(window.debugInterval);
+            } else {
+                debugStatus.style.display = 'block';
+                updateDebugStatus();
+                // 1초마다 상태 업데이트
+                window.debugInterval = setInterval(updateDebugStatus, 1000);
+            }
+        }
+
+        function updateDebugStatus() {
+            const debugContent = document.getElementById('debugContent');
+            if (!debugContent) return;
+            
+            const selectedImages = localStorage.getItem('selectedImages');
+            const hasWebImages = webImages && webImages.length > 0;
+            const hasCurrentImage = currentImage !== null;
+            
+            debugContent.innerHTML = `
+                <div>📦 localStorage: ${selectedImages ? '✅' : '❌'}</div>
+                <div>🌐 webImages: ${hasWebImages ? webImages.length : 0}개</div>
+                <div>🖼️ currentImage: ${hasCurrentImage ? '✅' : '❌'}</div>
+                <div>💾 Storage 사용: ${localStorage.length}개 항목</div>
+                <div style="margin-top: 5px; padding-top: 5px; border-top: 1px solid #444; font-size: 0.7rem;">
+                    Ctrl+Shift+D: 빠른수정 | Ctrl+Shift+I: 토글
+                </div>
+            `;
+        }
+
+        // 페이지 로드 시 디버그 정보 출력 (개발용)
+        window.addEventListener('load', () => {
+            console.log('🏁 컬러링 변환기 페이지 로드 완료');
+            debugLocalStorage();
+            
+            // URL 파라미터로 디버그 모드 확인
+            const urlParams = new URLSearchParams(window.location.search);
+            if (urlParams.get('debug') === 'true') {
+                setTimeout(toggleDebugStatus, 1000);
+            }
+        });
 
         function createErrorDiv() {
             const errorDiv = document.createElement('div');

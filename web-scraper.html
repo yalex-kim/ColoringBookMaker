@@ -787,32 +787,133 @@
                 return;
             }
 
-            const selectedImageData = selectedImages.map(index => allImages[index]);
+            console.log('🎯 선택된 이미지 변환 시작...');
+            console.log('선택된 인덱스:', selectedImages);
+            console.log('전체 이미지 배열:', allImages);
+
+            // 선택된 이미지 데이터 추출 및 검증
+            const selectedImageData = [];
             
-            // localStorage에 저장
+            selectedImages.forEach((index, i) => {
+                const image = allImages[index];
+                console.log(`이미지 ${i + 1} 검증:`, image);
+                
+                if (image && image.src) {
+                    // 데이터 정제 및 검증
+                    const cleanedImage = {
+                        src: String(image.src).trim(),
+                        alt: String(image.alt || `이미지 ${i + 1}`).trim(),
+                        width: parseInt(image.width) || 200,
+                        height: parseInt(image.height) || 200
+                    };
+                    
+                    // URL 유효성 검사
+                    try {
+                        new URL(cleanedImage.src);
+                        selectedImageData.push(cleanedImage);
+                        console.log(`✅ 이미지 ${i + 1} 유효함:`, cleanedImage);
+                    } catch (urlError) {
+                        console.error(`❌ 이미지 ${i + 1} URL 무효:`, cleanedImage.src);
+                    }
+                } else {
+                    console.error(`❌ 이미지 ${i + 1} 데이터 없음:`, image);
+                }
+            });
+
+            if (selectedImageData.length === 0) {
+                alert('선택된 이미지 중 유효한 데이터가 없습니다.\n다시 선택해주세요.');
+                return;
+            }
+
+            console.log(`📦 정제된 이미지 데이터 (${selectedImageData.length}개):`, selectedImageData);
+            
+            // localStorage에 안전하게 저장
             try {
-                localStorage.setItem('selectedImages', JSON.stringify(selectedImageData));
-                console.log('Images saved to localStorage:', selectedImageData.length, 'images');
+                const jsonString = JSON.stringify(selectedImageData);
+                console.log('💾 저장할 JSON 문자열 길이:', jsonString.length);
+                console.log('💾 저장할 JSON 샘플:', jsonString.substring(0, 200) + '...');
+                
+                // localStorage 용량 확인 (5MB 제한)
+                if (jsonString.length > 5000000) {
+                    throw new Error('데이터가 너무 큽니다. 이미지 개수를 줄여주세요.');
+                }
+                
+                localStorage.setItem('selectedImages', jsonString);
+                
+                // 저장 검증
+                const verification = localStorage.getItem('selectedImages');
+                if (!verification || verification !== jsonString) {
+                    throw new Error('데이터 저장 검증 실패');
+                }
+                
+                console.log('✅ localStorage 저장 성공');
                 
                 // 저장 확인 메시지
                 const confirmDiv = document.createElement('div');
                 confirmDiv.innerHTML = `
-                    <div style="position: fixed; top: 50%; left: 50%; transform: translate(-50%, -50%); background: #2e7d32; color: white; padding: 20px 30px; border-radius: 10px; box-shadow: 0 10px 30px rgba(0,0,0,0.3); z-index: 10000; text-align: center;">
-                        <h3 style="margin: 0 0 10px 0;">✅ 이미지 저장 완료!</h3>
-                        <p style="margin: 0 0 15px 0;">${selectedImages.length}개의 이미지를 선택했습니다.</p>
-                        <p style="margin: 0; font-size: 0.9rem;">컬러링북 변환 페이지로 이동합니다...</p>
+                    <div style="position: fixed; top: 50%; left: 50%; transform: translate(-50%, -50%); background: linear-gradient(135deg, #2e7d32 0%, #388e3c 100%); color: white; padding: 25px 35px; border-radius: 15px; box-shadow: 0 15px 35px rgba(0,0,0,0.3); z-index: 10000; text-align: center; max-width: 400px;">
+                        <div style="font-size: 2.5rem; margin-bottom: 15px;">✅</div>
+                        <h3 style="margin: 0 0 15px 0; font-weight: bold;">이미지 저장 완료!</h3>
+                        <p style="margin: 0 0 10px 0; opacity: 0.9;">${selectedImageData.length}개의 이미지를 선택했습니다.</p>
+                        <div style="background: rgba(255,255,255,0.1); padding: 10px; border-radius: 8px; margin: 15px 0; font-size: 0.9rem;">
+                            📊 총 데이터 크기: ${(jsonString.length / 1024).toFixed(1)} KB
+                        </div>
+                        <p style="margin: 0; font-size: 0.9rem; opacity: 0.8;">컬러링북 변환 페이지로 이동합니다...</p>
                     </div>
                 `;
                 document.body.appendChild(confirmDiv);
                 
-                // 2초 후 페이지 이동
+                // 2.5초 후 페이지 이동
                 setTimeout(() => {
+                    console.log('🚀 변환 페이지로 이동...');
                     window.location.href = 'coloring-converter.html';
-                }, 2000);
+                }, 2500);
                 
             } catch (error) {
-                console.error('Failed to save images to localStorage:', error);
-                alert('이미지 저장에 실패했습니다. 다시 시도해주세요.');
+                console.error('💥 localStorage 저장 실패:', error);
+                
+                // 상세한 에러 메시지
+                const errorDiv = document.createElement('div');
+                errorDiv.innerHTML = `
+                    <div style="position: fixed; top: 50%; left: 50%; transform: translate(-50%, -50%); background: #d32f2f; color: white; padding: 25px 35px; border-radius: 15px; box-shadow: 0 15px 35px rgba(0,0,0,0.3); z-index: 10000; text-align: center; max-width: 450px;">
+                        <div style="font-size: 2.5rem; margin-bottom: 15px;">❌</div>
+                        <h3 style="margin: 0 0 15px 0;">저장 실패</h3>
+                        <p style="margin: 0 0 15px 0; background: rgba(255,255,255,0.1); padding: 15px; border-radius: 8px; font-size: 0.9rem; text-align: left;">
+                            <strong>오류:</strong> ${error.message}
+                        </p>
+                        <div style="display: flex; gap: 10px; justify-content: center; margin-top: 20px;">
+                            <button onclick="this.parentElement.parentElement.parentElement.remove(); selectFewerImages();" style="background: #ff9800; color: white; border: none; padding: 10px 20px; border-radius: 8px; cursor: pointer;">
+                                🔢 개수 줄이기
+                            </button>
+                            <button onclick="this.parentElement.parentElement.parentElement.remove();" style="background: #666; color: white; border: none; padding: 10px 20px; border-radius: 8px; cursor: pointer;">
+                                닫기
+                            </button>
+                        </div>
+                    </div>
+                `;
+                document.body.appendChild(errorDiv);
+            }
+        }
+
+        function selectFewerImages() {
+            // 선택된 이미지가 많으면 절반으로 줄이기
+            if (selectedImages.length > 5) {
+                const halfCount = Math.ceil(selectedImages.length / 2);
+                selectedImages = selectedImages.slice(0, halfCount);
+                
+                // 선택 표시 업데이트
+                document.querySelectorAll('.image-item').forEach((item, index) => {
+                    if (selectedImages.includes(index)) {
+                        item.classList.add('selected');
+                    } else {
+                        item.classList.remove('selected');
+                    }
+                });
+                
+                updateResultsHeader();
+                alert(`선택을 ${halfCount}개로 줄였습니다. 다시 변환을 시도해보세요.`);
+            } else {
+                alert('이미지 개수가 이미 적습니다. 다른 이미지를 선택해주세요.');
             }
         }
 
@@ -956,6 +1057,12 @@
 
         function goToConverter() {
             window.location.href = 'coloring-converter.html';
+        }
+
+        function setExampleUrl(url) {
+            document.getElementById('urlInput').value = url;
+            document.getElementById('urlInput').focus();
+            hideError();
         }
 
         function hideError() {
