@@ -1,0 +1,281 @@
+<!DOCTYPE html>
+<html lang="ko">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>컬러링북 메이커</title>
+    <style>
+        * {
+            margin: 0;
+            padding: 0;
+            box-sizing: border-box;
+        }
+
+        body {
+            font-family: 'Arial', sans-serif;
+            background: linear-gradient(135deg, #667eea 0%, #764ba2 100%);
+            min-height: 100vh;
+            display: flex;
+            align-items: center;
+            justify-content: center;
+            color: #333;
+        }
+
+        .container {
+            background: rgba(255, 255, 255, 0.95);
+            backdrop-filter: blur(10px);
+            border-radius: 20px;
+            box-shadow: 0 20px 40px rgba(0, 0, 0, 0.1);
+            padding: 50px;
+            text-align: center;
+            max-width: 600px;
+            width: 90%;
+            animation: fadeInUp 0.6s ease-out;
+        }
+
+        @keyframes fadeInUp {
+            from {
+                opacity: 0;
+                transform: translateY(30px);
+            }
+            to {
+                opacity: 1;
+                transform: translateY(0);
+            }
+        }
+
+        .logo {
+            font-size: 3rem;
+            margin-bottom: 10px;
+            background: linear-gradient(45deg, #667eea, #764ba2);
+            -webkit-background-clip: text;
+            -webkit-text-fill-color: transparent;
+            background-clip: text;
+        }
+
+        .title {
+            font-size: 2.5rem;
+            font-weight: bold;
+            margin-bottom: 15px;
+            color: #333;
+        }
+
+        .subtitle {
+            font-size: 1.2rem;
+            color: #666;
+            margin-bottom: 40px;
+            line-height: 1.6;
+        }
+
+        .mode-cards {
+            display: flex;
+            gap: 30px;
+            margin-top: 40px;
+            flex-wrap: wrap;
+            justify-content: center;
+        }
+
+        .mode-card {
+            background: linear-gradient(135deg, #f8f9ff 0%, #e8f0ff 100%);
+            border: 3px solid transparent;
+            border-radius: 20px;
+            padding: 40px 30px;
+            width: 250px;
+            cursor: pointer;
+            transition: all 0.3s ease;
+            position: relative;
+            overflow: hidden;
+        }
+
+        .mode-card::before {
+            content: '';
+            position: absolute;
+            top: 0;
+            left: 0;
+            right: 0;
+            bottom: 0;
+            background: linear-gradient(135deg, #667eea, #764ba2);
+            opacity: 0;
+            transition: opacity 0.3s ease;
+            z-index: -1;
+        }
+
+        .mode-card:hover {
+            transform: translateY(-10px);
+            box-shadow: 0 20px 40px rgba(102, 126, 234, 0.3);
+            color: white;
+        }
+
+        .mode-card:hover::before {
+            opacity: 1;
+        }
+
+        .mode-card:hover .mode-icon,
+        .mode-card:hover .mode-title,
+        .mode-card:hover .mode-description {
+            color: white;
+        }
+
+        .mode-icon {
+            font-size: 4rem;
+            margin-bottom: 20px;
+            transition: all 0.3s ease;
+        }
+
+        .mode-title {
+            font-size: 1.5rem;
+            font-weight: bold;
+            margin-bottom: 15px;
+            color: #333;
+            transition: all 0.3s ease;
+        }
+
+        .mode-description {
+            font-size: 1rem;
+            color: #666;
+            line-height: 1.5;
+            transition: all 0.3s ease;
+        }
+
+        .features {
+            margin-top: 50px;
+            padding-top: 30px;
+            border-top: 2px solid #e0e0e0;
+        }
+
+        .features-title {
+            font-size: 1.3rem;
+            margin-bottom: 20px;
+            color: #333;
+            font-weight: bold;
+        }
+
+        .features-list {
+            display: flex;
+            justify-content: center;
+            gap: 30px;
+            flex-wrap: wrap;
+        }
+
+        .feature-item {
+            display: flex;
+            align-items: center;
+            gap: 8px;
+            font-size: 0.95rem;
+            color: #666;
+        }
+
+        .feature-icon {
+            font-size: 1.2rem;
+        }
+
+        @media (max-width: 768px) {
+            .container {
+                padding: 30px 20px;
+            }
+
+            .title {
+                font-size: 2rem;
+            }
+
+            .mode-cards {
+                flex-direction: column;
+                align-items: center;
+                gap: 20px;
+            }
+
+            .mode-card {
+                width: 100%;
+                max-width: 300px;
+            }
+
+            .features-list {
+                flex-direction: column;
+                gap: 15px;
+            }
+        }
+    </style>
+</head>
+<body>
+    <div class="container">
+        <div class="logo">🎨</div>
+        <h1 class="title">컬러링북 메이커</h1>
+        <p class="subtitle">
+            사진을 아름다운 컬러링북으로 변환해보세요!<br>
+            두 가지 방법으로 시작할 수 있습니다.
+        </p>
+
+        <div class="mode-cards">
+            <div class="mode-card" onclick="goToUploadMode()">
+                <div class="mode-icon">📁</div>
+                <h2 class="mode-title">직접 업로드</h2>
+                <p class="mode-description">
+                    컴퓨터에 저장된 사진을 업로드하여 
+                    바로 컬러링북으로 변환합니다.
+                </p>
+            </div>
+
+            <div class="mode-card" onclick="goToWebMode()">
+                <div class="mode-icon">🌐</div>
+                <h2 class="mode-title">웹사이트 수집</h2>
+                <p class="mode-description">
+                    웹사이트 링크를 입력하면 
+                    이미지들을 자동으로 수집하여 
+                    선택할 수 있습니다.
+                </p>
+            </div>
+        </div>
+
+        <div class="features">
+            <h3 class="features-title">✨ 주요 기능</h3>
+            <div class="features-list">
+                <div class="feature-item">
+                    <span class="feature-icon">📄</span>
+                    <span>다양한 종이 사이즈</span>
+                </div>
+                <div class="feature-item">
+                    <span class="feature-icon">🔄</span>
+                    <span>가로/세로 방향</span>
+                </div>
+                <div class="feature-item">
+                    <span class="feature-icon">🎛️</span>
+                    <span>세밀한 조정 옵션</span>
+                </div>
+                <div class="feature-item">
+                    <span class="feature-icon">🌈</span>
+                    <span>색칠 가이드 포함</span>
+                </div>
+                <div class="feature-item">
+                    <span class="feature-icon">📸</span>
+                    <span>인화용 사이즈 지원</span>
+                </div>
+            </div>
+        </div>
+    </div>
+
+    <script>
+        function goToUploadMode() {
+            // 직접 업로드 모드로 이동 (기존에 만든 페이지)
+            // alert('직접 업로드 모드로 이동합니다!\n\n현재는 데모이므로 별도 창에서 열어야 합니다.');
+            window.location.href = 'coloring-converter.html';
+        }
+
+        function goToWebMode() {
+            // 웹사이트 수집 모드로 이동
+            // alert('웹사이트 수집 모드로 이동합니다!\n\n잠시 후 웹 수집 페이지를 만들어드릴게요.');
+            window.location.href = 'web-scraper.html';
+        }
+
+        // 카드 호버 애니메이션 강화
+        document.querySelectorAll('.mode-card').forEach(card => {
+            card.addEventListener('mouseenter', () => {
+                card.style.transform = 'translateY(-10px) scale(1.02)';
+            });
+            
+            card.addEventListener('mouseleave', () => {
+                card.style.transform = 'translateY(0) scale(1)';
+            });
+        });
+    </script>
+</body>
+</html>

@@ -1,0 +1,901 @@
+<!DOCTYPE html>
+<html lang="ko">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>사진 → 컬러링북 변환기</title>
+    <style>
+        * {
+            margin: 0;
+            padding: 0;
+            box-sizing: border-box;
+        }
+
+        body {
+            font-family: 'Segoe UI', Tahoma, Geneva, Verdana, sans-serif;
+            background: linear-gradient(135deg, #667eea 0%, #764ba2 100%);
+            min-height: 100vh;
+            padding: 20px;
+        }
+
+        .container {
+            max-width: 1200px;
+            margin: 0 auto;
+            background: white;
+            border-radius: 20px;
+            padding: 30px;
+            box-shadow: 0 20px 40px rgba(0,0,0,0.1);
+        }
+
+        .header {
+            text-align: center;
+            margin-bottom: 30px;
+        }
+
+        .header h1 {
+            color: #333;
+            font-size: 2.5em;
+            margin-bottom: 10px;
+            background: linear-gradient(45deg, #667eea, #764ba2);
+            -webkit-background-clip: text;
+            -webkit-text-fill-color: transparent;
+        }
+
+        .header p {
+            color: #666;
+            font-size: 1.1em;
+        }
+
+        .upload-section {
+            text-align: center;
+            margin-bottom: 30px;
+        }
+
+        .upload-box {
+            border: 3px dashed #667eea;
+            border-radius: 15px;
+            padding: 40px;
+            background: #f8f9ff;
+            cursor: pointer;
+            transition: all 0.3s ease;
+            position: relative;
+            overflow: hidden;
+        }
+
+        .upload-box:hover {
+            border-color: #764ba2;
+            background: #f0f2ff;
+            transform: translateY(-2px);
+        }
+
+        .upload-box.dragover {
+            border-color: #764ba2;
+            background: #e8ebff;
+            transform: scale(1.02);
+        }
+
+        .upload-icon {
+            font-size: 3em;
+            color: #667eea;
+            margin-bottom: 15px;
+        }
+
+        .upload-text {
+            font-size: 1.2em;
+            color: #333;
+            margin-bottom: 10px;
+        }
+
+        .upload-subtext {
+            color: #666;
+            font-size: 0.9em;
+        }
+
+        #fileInput {
+            display: none;
+        }
+
+        .controls {
+            display: flex;
+            gap: 15px;
+            margin-bottom: 30px;
+            flex-wrap: wrap;
+            justify-content: center;
+            align-items: end;
+        }
+
+        .web-image-item {
+            background: white;
+            border-radius: 10px;
+            padding: 10px;
+            cursor: pointer;
+            transition: all 0.3s ease;
+            border: 3px solid transparent;
+        }
+
+        .web-image-item:hover {
+            transform: translateY(-3px);
+            box-shadow: 0 5px 15px rgba(0, 0, 0, 0.2);
+        }
+
+        .web-image-item.selected {
+            border-color: #667eea;
+            background: #f0f2ff;
+        }
+
+        .web-image-preview {
+            width: 100%;
+            height: 120px;
+            object-fit: cover;
+            border-radius: 5px;
+            margin-bottom: 5px;
+        }
+
+        .web-image-info {
+            font-size: 0.8rem;
+            text-align: center;
+            color: #666;
+        }
+
+        .back-btn:hover {
+            background: white !important;
+            transform: translateY(-2px);
+            box-shadow: 0 5px 15px rgba(0, 0, 0, 0.2);
+        }
+
+        .control-group {
+            display: flex;
+            flex-direction: column;
+            align-items: center;
+        }
+
+        .control-group label {
+            color: #333;
+            font-weight: 600;
+            margin-bottom: 5px;
+        }
+
+        .slider {
+            width: 150px;
+            height: 5px;
+            border-radius: 5px;
+            background: #ddd;
+            outline: none;
+            -webkit-appearance: none;
+        }
+
+        .slider::-webkit-slider-thumb {
+            appearance: none;
+            width: 20px;
+            height: 20px;
+            border-radius: 50%;
+            background: #667eea;
+            cursor: pointer;
+        }
+
+        .slider::-moz-range-thumb {
+            width: 20px;
+            height: 20px;
+            border-radius: 50%;
+            background: #667eea;
+            cursor: pointer;
+            border: none;
+        }
+
+        .checkbox-group {
+            display: flex;
+            flex-direction: column;
+            align-items: center;
+            gap: 5px;
+        }
+
+        .checkbox-container {
+            display: flex;
+            align-items: center;
+            gap: 8px;
+            background: #f8f9ff;
+            padding: 8px 12px;
+            border-radius: 20px;
+            border: 2px solid #e0e0e0;
+            transition: all 0.3s ease;
+        }
+
+        .checkbox-container:hover {
+            border-color: #667eea;
+            background: #f0f2ff;
+        }
+
+        .checkbox-container input[type="checkbox"] {
+            width: 18px;
+            height: 18px;
+            cursor: pointer;
+        }
+
+        .checkbox-container label {
+            cursor: pointer;
+            color: #333;
+            font-weight: 600;
+            margin: 0;
+        }
+
+        .select-group {
+            display: flex;
+            flex-direction: column;
+            align-items: center;
+            gap: 5px;
+        }
+
+        .select-container {
+            background: #f8f9ff;
+            padding: 8px 12px;
+            border-radius: 20px;
+            border: 2px solid #e0e0e0;
+            transition: all 0.3s ease;
+        }
+
+        .select-container:hover {
+            border-color: #667eea;
+            background: #f0f2ff;
+        }
+
+        .select-container select {
+            background: transparent;
+            border: none;
+            color: #333;
+            font-weight: 600;
+            cursor: pointer;
+            outline: none;
+            font-size: 14px;
+        }
+
+        .btn {
+            background: linear-gradient(45deg, #667eea, #764ba2);
+            color: white;
+            border: none;
+            padding: 12px 30px;
+            border-radius: 25px;
+            font-size: 1em;
+            font-weight: 600;
+            cursor: pointer;
+            transition: all 0.3s ease;
+            text-transform: uppercase;
+            letter-spacing: 1px;
+        }
+
+        .btn:hover {
+            transform: translateY(-2px);
+            box-shadow: 0 10px 20px rgba(102, 126, 234, 0.3);
+        }
+
+        .result-section {
+            display: none;
+            margin-top: 30px;
+        }
+
+        .coloring-section {
+            background: white;
+            border: 2px solid #e0e0e0;
+            border-radius: 15px;
+            padding: 20px;
+            text-align: center;
+        }
+
+        .coloring-section h3 {
+            color: #333;
+            margin-bottom: 15px;
+            font-size: 1.5em;
+        }
+
+        .coloring-image {
+            max-width: 100%;
+            border-radius: 10px;
+            box-shadow: 0 5px 15px rgba(0,0,0,0.1);
+        }
+
+        .download-section {
+            text-align: center;
+            margin-top: 20px;
+        }
+
+        .loading {
+            display: none;
+            text-align: center;
+            margin: 20px 0;
+        }
+
+        .spinner {
+            border: 4px solid #f3f3f3;
+            border-top: 4px solid #667eea;
+            border-radius: 50%;
+            width: 50px;
+            height: 50px;
+            animation: spin 1s linear infinite;
+            margin: 0 auto 15px;
+        }
+
+        @keyframes spin {
+            0% { transform: rotate(0deg); }
+            100% { transform: rotate(360deg); }
+        }
+
+        @media (max-width: 768px) {
+            .controls {
+                flex-direction: column;
+                gap: 20px;
+            }
+            
+            .container {
+                padding: 20px;
+            }
+
+            .back-btn {
+                position: static !important;
+                margin-bottom: 20px;
+                align-self: flex-start;
+            }
+
+            .web-images-grid {
+                grid-template-columns: repeat(auto-fill, minmax(120px, 1fr)) !important;
+                gap: 10px !important;
+            }
+
+            .web-image-preview {
+                height: 100px !important;
+            }
+        }
+    </style>
+</head>
+<body>
+    <div class="container">
+        <div class="header">
+            <h1>🎨 사진 → 컬러링북 변환기</h1>
+            <p>사진을 업로드하면 컬러링북으로 변환해드려요!</p>
+        </div>
+
+        <div class="upload-section">
+            <div class="upload-box" onclick="document.getElementById('fileInput').click()">
+                <div class="upload-icon">📸</div>
+                <div class="upload-text">사진을 선택하거나 드래그 해주세요</div>
+                <div class="upload-subtext">JPG, PNG 파일을 지원합니다</div>
+            </div>
+            <input type="file" id="fileInput" accept="image/*">
+        </div>
+
+        <div class="controls">
+            <div class="control-group">
+                <label for="edgeThreshold">윤곽선 강도</label>
+                <input type="range" id="edgeThreshold" class="slider" min="50" max="300" value="170">
+                <span id="edgeValue">170</span>
+            </div>
+            <div class="control-group">
+                <label for="blurAmount">부드러움</label>
+                <input type="range" id="blurAmount" class="slider" min="0" max="3" value="0.5" step="0.5">
+                <span id="blurValue">0.5</span>
+            </div>
+            <div class="control-group">
+                <label for="lineThickness">선 굵기</label>
+                <input type="range" id="lineThickness" class="slider" min="0.2" max="2" value="1" step="0.2">
+                <span id="thicknessValue">1</span>
+            </div>
+            <div class="select-group">
+                <label for="paperSize">📄 종이 사이즈</label>
+                <div class="select-container">
+                    <select id="paperSize">
+                        <option value="a4">A4 (210×297mm)</option>
+                        <option value="a5">A5 (148×210mm)</option>
+                        <option value="b4">B4 (250×353mm)</option>
+                        <option value="b5">B5 (176×250mm)</option>
+                        <option value="5x7">5×7 인화용 (5×7")</option>
+                        <option value="4x6">4×6 인화용 (4×6")</option>
+                    </select>
+                </div>
+            </div>
+            <div class="select-group">
+                <label for="orientation">🔄 방향</label>
+                <div class="select-container">
+                    <select id="orientation">
+                        <option value="portrait">세로 (Portrait)</option>
+                        <option value="landscape">가로 (Landscape)</option>
+                    </select>
+                </div>
+            </div>
+            <div class="checkbox-group">
+                <div class="checkbox-container">
+                    <input type="checkbox" id="includeGuide" checked>
+                    <label for="includeGuide">🌈 색칠 가이드 포함</label>
+                </div>
+            </div>
+        </div>
+
+        <div class="loading">
+            <div class="spinner"></div>
+            <p>컬러링북으로 변환 중...</p>
+        </div>
+
+        <div class="result-section">
+            <div class="coloring-section">
+                <h3 id="resultTitle">🖍️ 컬러링 시트</h3>
+                <img id="coloringImage" class="coloring-image" alt="Coloring page">
+                <div class="download-section">
+                    <button class="btn" onclick="downloadColoring()">컬러링 시트 다운로드</button>
+                </div>
+            </div>
+        </div>
+    </div>
+
+    <script>
+        const fileInput = document.getElementById('fileInput');
+        const uploadBox = document.querySelector('.upload-box');
+        const resultSection = document.querySelector('.result-section');
+        const coloringImage = document.getElementById('coloringImage');
+        const resultTitle = document.getElementById('resultTitle');
+        const loading = document.querySelector('.loading');
+        
+        const edgeThreshold = document.getElementById('edgeThreshold');
+        const blurAmount = document.getElementById('blurAmount');
+        const lineThickness = document.getElementById('lineThickness');
+        const includeGuide = document.getElementById('includeGuide');
+        const paperSize = document.getElementById('paperSize');
+        const orientation = document.getElementById('orientation');
+        
+        const edgeValue = document.getElementById('edgeValue');
+        const blurValue = document.getElementById('blurValue');
+        const thicknessValue = document.getElementById('thicknessValue');
+
+        let currentImage = null;
+        let finalCanvas = null;
+        let webImages = [];
+
+        // 페이지 로드시 웹에서 가져온 이미지 확인
+        window.onload = function() {
+            checkWebImages();
+        };
+
+        function goBack() {
+            if (confirm('메인 페이지로 돌아가시겠습니까? 현재 작업이 저장되지 않을 수 있습니다.')) {
+                localStorage.removeItem('selectedImages'); // 저장된 이미지 정보 삭제
+                // alert('메인 페이지로 이동합니다.');
+                window.location.href = 'index.html';
+            }
+        }
+
+        function checkWebImages() {
+            const savedImages = localStorage.getItem('selectedImages');
+            if (savedImages) {
+                try {
+                    webImages = JSON.parse(savedImages);
+                    if (webImages.length > 0) {
+                        displayWebImages();
+                        // 업로드 섹션 숨기기
+                        document.getElementById('uploadSection').style.display = 'none';
+                    }
+                } catch (error) {
+                    console.error('Error parsing saved images:', error);
+                    localStorage.removeItem('selectedImages');
+                }
+            }
+        }
+
+        function displayWebImages() {
+            const webImagesSection = document.getElementById('webImagesSection');
+            const webImagesGrid = document.getElementById('webImagesGrid');
+            
+            webImagesSection.style.display = 'block';
+            webImagesGrid.innerHTML = '';
+
+            webImages.forEach((image, index) => {
+                const imageItem = document.createElement('div');
+                imageItem.className = 'web-image-item';
+                imageItem.onclick = () => selectWebImage(index);
+                
+                imageItem.innerHTML = `
+                    <img src="${image.src}" alt="${image.alt}" class="web-image-preview" onerror="this.style.display='none'">
+                    <div class="web-image-info">${image.width} × ${image.height}</div>
+                `;
+                
+                webImagesGrid.appendChild(imageItem);
+            });
+        }
+
+        function selectWebImage(index) {
+            // 이전 선택 해제
+            document.querySelectorAll('.web-image-item').forEach(item => {
+                item.classList.remove('selected');
+            });
+            
+            // 새로운 선택
+            document.querySelectorAll('.web-image-item')[index].classList.add('selected');
+            
+            // 이미지 로드
+            const selectedImage = webImages[index];
+            loadImageFromUrl(selectedImage.src);
+        }
+
+        function loadImageFromUrl(url) {
+            const img = new Image();
+            img.crossOrigin = 'anonymous'; // CORS 처리
+            img.onload = function() {
+                currentImage = img;
+                processImage();
+            };
+            img.onerror = function() {
+                alert('이미지를 로드할 수 없습니다. 다른 이미지를 선택해주세요.');
+            };
+            img.src = url;
+        }
+
+        function showUploadOption() {
+            document.getElementById('uploadSection').style.display = 'block';
+            // 웹 이미지 선택 해제
+            document.querySelectorAll('.web-image-item').forEach(item => {
+                item.classList.remove('selected');
+            });
+        }
+
+        // 슬라이더 값 업데이트
+        edgeThreshold.addEventListener('input', (e) => {
+            edgeValue.textContent = e.target.value;
+            if (currentImage) processImage();
+        });
+
+        blurAmount.addEventListener('input', (e) => {
+            blurValue.textContent = e.target.value;
+            if (currentImage) processImage();
+        });
+
+        lineThickness.addEventListener('input', (e) => {
+            thicknessValue.textContent = e.target.value;
+            if (currentImage) processImage();
+        });
+
+        includeGuide.addEventListener('change', () => {
+            if (currentImage) processImage();
+        });
+
+        paperSize.addEventListener('change', () => {
+            if (currentImage) processImage();
+        });
+
+        orientation.addEventListener('change', () => {
+            if (currentImage) processImage();
+        });
+
+        // 종이 사이즈 정의 (72DPI 기준)
+        const paperSizes = {
+            a4: { width: 595, height: 842, name: 'A4' },
+            a5: { width: 420, height: 595, name: 'A5' },
+            b4: { width: 708, height: 1001, name: 'B4' },
+            b5: { width: 499, height: 708, name: 'B5' },
+            '5x7': { width: 360, height: 504, name: '5×7' },
+            '4x6': { width: 288, height: 432, name: '4×6' }
+        };
+
+        // 드래그 앤 드롭
+        uploadBox.addEventListener('dragover', (e) => {
+            e.preventDefault();
+            uploadBox.classList.add('dragover');
+        });
+
+        uploadBox.addEventListener('dragleave', () => {
+            uploadBox.classList.remove('dragover');
+        });
+
+        uploadBox.addEventListener('drop', (e) => {
+            e.preventDefault();
+            uploadBox.classList.remove('dragover');
+            const files = e.dataTransfer.files;
+            if (files.length > 0) {
+                handleFile(files[0]);
+            }
+        });
+
+        fileInput.addEventListener('change', (e) => {
+            if (e.target.files.length > 0) {
+                handleFile(e.target.files[0]);
+            }
+        });
+
+        function handleFile(file) {
+            if (!file.type.startsWith('image/')) {
+                alert('이미지 파일만 업로드 가능합니다.');
+                return;
+            }
+
+            const reader = new FileReader();
+            reader.onload = (e) => {
+                currentImage = new Image();
+                currentImage.onload = () => {
+                    processImage();
+                };
+                currentImage.src = e.target.result;
+            };
+            reader.readAsDataURL(file);
+        }
+
+        function processImage() {
+            if (!currentImage) return;
+
+            loading.style.display = 'block';
+            resultSection.style.display = 'none';
+
+            setTimeout(() => {
+                // 선택된 종이 사이즈 가져오기
+                const selectedSize = paperSizes[paperSize.value];
+                const isLandscape = orientation.value === 'landscape';
+                
+                // 방향에 따라 width/height 조정
+                const PAPER_WIDTH = isLandscape ? selectedSize.height : selectedSize.width;
+                const PAPER_HEIGHT = isLandscape ? selectedSize.width : selectedSize.height;
+                
+                const includeGuideOption = includeGuide.checked;
+                
+                // 가이드 이미지 크기 (작은 사이즈에서는 비율 조정)
+                let guideRatio = 0.25; // 기본 1/4
+                if (PAPER_WIDTH < 400) guideRatio = 0.35; // 작은 사이즈에서는 조금 더 크게
+                
+                let GUIDE_WIDTH, GUIDE_HEIGHT;
+                if (isLandscape) {
+                    // 가로 모드: 가이드를 왼쪽에 배치
+                    GUIDE_WIDTH = PAPER_WIDTH * guideRatio;
+                    GUIDE_HEIGHT = PAPER_HEIGHT * 0.8; // 세로로 길게
+                } else {
+                    // 세로 모드: 가이드를 위쪽에 배치
+                    GUIDE_WIDTH = PAPER_WIDTH * guideRatio;
+                    GUIDE_HEIGHT = PAPER_HEIGHT * guideRatio;
+                }
+                
+                // 컬러링 영역 크기 (가이드 포함 여부와 방향에 따라 다름)
+                let COLORING_WIDTH, COLORING_HEIGHT, coloringStartX, coloringStartY;
+                const margin = PAPER_WIDTH < 400 ? 10 : 20; // 작은 사이즈에서는 여백 축소
+                const guideMargin = PAPER_WIDTH < 400 ? 20 : 30;
+                
+                if (includeGuideOption) {
+                    if (isLandscape) {
+                        // 가로 모드: 가이드 왼쪽, 컬러링 오른쪽
+                        COLORING_WIDTH = PAPER_WIDTH - GUIDE_WIDTH - guideMargin - margin;
+                        COLORING_HEIGHT = PAPER_HEIGHT - (margin * 2);
+                        coloringStartX = GUIDE_WIDTH + guideMargin;
+                        coloringStartY = margin;
+                    } else {
+                        // 세로 모드: 가이드 위쪽, 컬러링 아래쪽
+                        COLORING_WIDTH = PAPER_WIDTH - margin;
+                        COLORING_HEIGHT = PAPER_HEIGHT - GUIDE_HEIGHT - guideMargin;
+                        coloringStartX = margin / 2;
+                        coloringStartY = GUIDE_HEIGHT + guideMargin;
+                    }
+                } else {
+                    // 가이드 없을 때
+                    COLORING_WIDTH = PAPER_WIDTH - (margin * 2);
+                    COLORING_HEIGHT = PAPER_HEIGHT - (margin * 2);
+                    coloringStartX = margin;
+                    coloringStartY = margin;
+                }
+                
+                // 종이 크기 캔버스 생성
+                const paperCanvas = document.createElement('canvas');
+                const paperCtx = paperCanvas.getContext('2d');
+                paperCanvas.width = PAPER_WIDTH;
+                paperCanvas.height = PAPER_HEIGHT;
+                
+                // 흰색 배경
+                paperCtx.fillStyle = 'white';
+                paperCtx.fillRect(0, 0, PAPER_WIDTH, PAPER_HEIGHT);
+                
+                // 컬러링 이미지 생성을 위한 임시 캔버스
+                const tempCanvas = document.createElement('canvas');
+                const tempCtx = tempCanvas.getContext('2d');
+                tempCanvas.width = currentImage.width;
+                tempCanvas.height = currentImage.height;
+                
+                // 원본 이미지 그리기
+                tempCtx.drawImage(currentImage, 0, 0);
+                
+                // 이미지 데이터 가져오기
+                const imageData = tempCtx.getImageData(0, 0, tempCanvas.width, tempCanvas.height);
+                const data = imageData.data;
+                
+                // 그레이스케일 변환 및 엣지 검출
+                const grayData = new Uint8ClampedArray(data.length);
+                
+                // 그레이스케일 변환
+                for (let i = 0; i < data.length; i += 4) {
+                    const gray = data[i] * 0.299 + data[i + 1] * 0.587 + data[i + 2] * 0.114;
+                    grayData[i] = gray;
+                    grayData[i + 1] = gray;
+                    grayData[i + 2] = gray;
+                    grayData[i + 3] = 255;
+                }
+                
+                // 간단한 엣지 검출 (Sobel-like)
+                const edgeData = new Uint8ClampedArray(data.length);
+                const threshold = parseInt(edgeThreshold.value);
+                const thickness = parseFloat(lineThickness.value);
+                
+                for (let y = 1; y < tempCanvas.height - 1; y++) {
+                    for (let x = 1; x < tempCanvas.width - 1; x++) {
+                        const idx = (y * tempCanvas.width + x) * 4;
+                        
+                        // 주변 픽셀들의 밝기 값
+                        const tl = grayData[((y-1) * tempCanvas.width + (x-1)) * 4];
+                        const tm = grayData[((y-1) * tempCanvas.width + x) * 4];
+                        const tr = grayData[((y-1) * tempCanvas.width + (x+1)) * 4];
+                        const ml = grayData[(y * tempCanvas.width + (x-1)) * 4];
+                        const mr = grayData[(y * tempCanvas.width + (x+1)) * 4];
+                        const bl = grayData[((y+1) * tempCanvas.width + (x-1)) * 4];
+                        const bm = grayData[((y+1) * tempCanvas.width + x) * 4];
+                        const br = grayData[((y+1) * tempCanvas.width + (x+1)) * 4];
+                        
+                        // Sobel 연산자
+                        const gx = (tr + 2*mr + br) - (tl + 2*ml + bl);
+                        const gy = (bl + 2*bm + br) - (tl + 2*tm + tr);
+                        const magnitude = Math.sqrt(gx*gx + gy*gy);
+                        
+                        // 엣지인지 판단
+                        if (magnitude > threshold) {
+                            // 선 굵기 적용 (소수점 값 처리 개선)
+                            const effectiveThickness = Math.max(thickness, 0.5); // 최소 0.5 보장
+                            const radiusSquared = effectiveThickness * effectiveThickness;
+                            
+                            const minRange = Math.floor(-effectiveThickness - 0.5);
+                            const maxRange = Math.ceil(effectiveThickness + 0.5);
+                            
+                            for (let dy = minRange; dy <= maxRange; dy++) {
+                                for (let dx = minRange; dx <= maxRange; dx++) {
+                                    const newY = y + dy;
+                                    const newX = x + dx;
+                                    if (newY >= 0 && newY < tempCanvas.height && newX >= 0 && newX < tempCanvas.width) {
+                                        const distanceSquared = dx*dx + dy*dy;
+                                        if (distanceSquared <= radiusSquared) {
+                                            const newIdx = (newY * tempCanvas.width + newX) * 4;
+                                            edgeData[newIdx] = 0;     // R
+                                            edgeData[newIdx + 1] = 0; // G
+                                            edgeData[newIdx + 2] = 0; // B
+                                            edgeData[newIdx + 3] = 255; // A
+                                        }
+                                    }
+                                }
+                            }
+                        } else {
+                            edgeData[idx] = 255;     // R
+                            edgeData[idx + 1] = 255; // G
+                            edgeData[idx + 2] = 255; // B
+                            edgeData[idx + 3] = 255; // A
+                        }
+                    }
+                }
+                
+                // 결과 이미지 생성
+                const resultImageData = new ImageData(edgeData, tempCanvas.width, tempCanvas.height);
+                tempCtx.putImageData(resultImageData, 0, 0);
+                
+                // 부드러움 효과 적용
+                const blur = parseFloat(blurAmount.value);
+                if (blur > 0) {
+                    tempCtx.filter = `blur(${blur}px)`;
+                    tempCtx.drawImage(tempCanvas, 0, 0);
+                    tempCtx.filter = 'none';
+                }
+                
+                // 종이에 가이드 이미지 추가 (옵션이 켜져있을 때만)
+                if (includeGuideOption) {
+                    const guideAspect = currentImage.width / currentImage.height;
+                    let guideDrawWidth, guideDrawHeight, guideX, guideY;
+                    
+                    if (isLandscape) {
+                        // 가로 모드: 왼쪽에 세로로 길게 배치
+                        guideDrawWidth = GUIDE_WIDTH * 0.8; // 여백 고려
+                        guideDrawHeight = GUIDE_HEIGHT * 0.8;
+                        
+                        if (guideAspect > (guideDrawWidth / guideDrawHeight)) {
+                            guideDrawHeight = guideDrawWidth / guideAspect;
+                        } else {
+                            guideDrawWidth = guideDrawHeight * guideAspect;
+                        }
+                        
+                        guideX = (GUIDE_WIDTH - guideDrawWidth) / 2;
+                        guideY = margin;
+                    } else {
+                        // 세로 모드: 위쪽에 가로로 배치
+                        guideDrawWidth = GUIDE_WIDTH;
+                        guideDrawHeight = GUIDE_HEIGHT;
+                        
+                        if (guideAspect > 1) {
+                            guideDrawHeight = GUIDE_WIDTH / guideAspect;
+                        } else {
+                            guideDrawWidth = GUIDE_HEIGHT * guideAspect;
+                        }
+                        
+                        guideX = margin / 2;
+                        guideY = margin / 2;
+                    }
+                    
+                    // 가이드 이미지 그리기
+                    paperCtx.drawImage(currentImage, guideX, guideY, guideDrawWidth, guideDrawHeight);
+                    
+                    // 가이드 이미지 테두리
+                    paperCtx.strokeStyle = '#ddd';
+                    paperCtx.lineWidth = 1;
+                    paperCtx.strokeRect(guideX, guideY, guideDrawWidth, guideDrawHeight);
+                    
+                    // 가이드 라벨 추가 (폰트 크기 조정)
+                    const fontSize = PAPER_WIDTH < 400 ? 10 : 12;
+                    paperCtx.fillStyle = '#666';
+                    paperCtx.font = `${fontSize}px Arial`;
+                    
+                    if (isLandscape) {
+                        // 가로 모드: 가이드 아래에 라벨
+                        paperCtx.fillText('색칠 가이드', guideX + 5, guideY + guideDrawHeight + fontSize + 5);
+                    } else {
+                        // 세로 모드: 가이드 아래에 라벨
+                        paperCtx.fillText('색칠 가이드', guideX + 5, guideY + guideDrawHeight + fontSize + 5);
+                    }
+                }
+                
+                // 컬러링 이미지를 종이 캔버스에 추가
+                const coloringAspect = currentImage.width / currentImage.height;
+                let coloringDrawWidth = COLORING_WIDTH;
+                let coloringDrawHeight = COLORING_HEIGHT;
+                
+                if (coloringAspect > (COLORING_WIDTH / COLORING_HEIGHT)) {
+                    coloringDrawHeight = COLORING_WIDTH / coloringAspect;
+                } else {
+                    coloringDrawWidth = COLORING_HEIGHT * coloringAspect;
+                }
+                
+                // 중앙 정렬
+                const finalColoringX = coloringStartX + (COLORING_WIDTH - coloringDrawWidth) / 2;
+                const finalColoringY = coloringStartY + (COLORING_HEIGHT - coloringDrawHeight) / 2;
+                
+                paperCtx.drawImage(tempCanvas, finalColoringX, finalColoringY, coloringDrawWidth, coloringDrawHeight);
+                
+                // 최종 캔버스 저장
+                finalCanvas = paperCanvas;
+                coloringImage.src = paperCanvas.toDataURL();
+                
+                // 제목 업데이트
+                const sizeName = selectedSize.name;
+                const orientationName = isLandscape ? '가로' : '세로';
+                resultTitle.textContent = includeGuideOption ? 
+                    `🖍️ ${sizeName} ${orientationName} 컬러링 시트 (가이드 포함)` : 
+                    `🖍️ ${sizeName} ${orientationName} 컬러링 시트`;
+                
+                loading.style.display = 'none';
+                resultSection.style.display = 'block';
+            }, 500);
+        }
+
+        function downloadColoring() {
+            if (!finalCanvas) {
+                alert('먼저 이미지를 처리해주세요.');
+                return;
+            }
+
+            const selectedSize = paperSizes[paperSize.value];
+            const isLandscape = orientation.value === 'landscape';
+            const safeName = selectedSize.name.replace(/×/g, 'x'); // × 를 x로 변경
+            const orientationSuffix = isLandscape ? '-landscape' : '-portrait';
+            const filename = `coloring-sheet-${safeName.toLowerCase()}${orientationSuffix}.png`;
+
+            // canvas를 blob으로 변환하여 다운로드
+            finalCanvas.toBlob(function(blob) {
+                if (blob) {
+                    const url = URL.createObjectURL(blob);
+                    const link = document.createElement('a');
+                    link.href = url;
+                    link.download = filename;
+                    document.body.appendChild(link);
+                    link.click();
+                    document.body.removeChild(link);
+                    URL.revokeObjectURL(url);
+                } else {
+                    // blob 생성 실패시 fallback
+                    const link = document.createElement('a');
+                    link.download = filename;
+                    link.href = finalCanvas.toDataURL('image/png');
+                    link.click();
+                }
+            }, 'image/png', 0.95);
+        }
+    </script>
+</body>
+</html>
