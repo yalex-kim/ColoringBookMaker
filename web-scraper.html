@@ -379,7 +379,6 @@
 
         function goBack() {
             if (confirm('메인 페이지로 돌아가시겠습니까?')) {
-                //alert('메인 페이지로 이동합니다.');
                 window.location.href = 'index.html';
             }
         }
@@ -568,13 +567,31 @@
 
             const selectedImageData = selectedImages.map(index => allImages[index]);
             
-            // 선택된 이미지들을 컬러링북 변환 페이지로 전달
-            localStorage.setItem('selectedImages', JSON.stringify(selectedImageData));
-            
-            alert(`${selectedImages.length}개의 이미지가 선택되었습니다.\n컬러링북 변환 페이지로 이동합니다.`);
-            
-            // 실제로는 컬러링북 변환 페이지로 이동
-            window.location.href = 'coloring-converter.html';
+            // localStorage에 저장
+            try {
+                localStorage.setItem('selectedImages', JSON.stringify(selectedImageData));
+                console.log('Images saved to localStorage:', selectedImageData.length, 'images');
+                
+                // 저장 확인 메시지
+                const confirmDiv = document.createElement('div');
+                confirmDiv.innerHTML = `
+                    <div style="position: fixed; top: 50%; left: 50%; transform: translate(-50%, -50%); background: #2e7d32; color: white; padding: 20px 30px; border-radius: 10px; box-shadow: 0 10px 30px rgba(0,0,0,0.3); z-index: 10000; text-align: center;">
+                        <h3 style="margin: 0 0 10px 0;">✅ 이미지 저장 완료!</h3>
+                        <p style="margin: 0 0 15px 0;">${selectedImages.length}개의 이미지를 선택했습니다.</p>
+                        <p style="margin: 0; font-size: 0.9rem;">컬러링북 변환 페이지로 이동합니다...</p>
+                    </div>
+                `;
+                document.body.appendChild(confirmDiv);
+                
+                // 2초 후 페이지 이동
+                setTimeout(() => {
+                    window.location.href = 'coloring-converter.html';
+                }, 2000);
+                
+            } catch (error) {
+                console.error('Failed to save images to localStorage:', error);
+                alert('이미지 저장에 실패했습니다. 다시 시도해주세요.');
+            }
         }
 
         function isValidUrl(string) {
