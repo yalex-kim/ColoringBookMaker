@@ -3,7 +3,7 @@
 <head>
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
-    <title>컬러링북 메이커 - 통합 버전</title>
+    <title>컬러링북 메이커 - AI 이미지 생성 포함</title>
     <style>
         * {
             margin: 0;
@@ -52,6 +52,7 @@
             gap: 10px;
             margin-bottom: 30px;
             border-bottom: 2px solid #e0e0e0;
+            overflow-x: auto;
         }
 
         .mode-tab {
@@ -65,6 +66,8 @@
             transition: all 0.3s ease;
             color: #666;
             position: relative;
+            white-space: nowrap;
+            min-width: 150px;
         }
 
         .mode-tab.active {
@@ -135,6 +138,240 @@
 
         #fileInput {
             display: none;
+        }
+
+        /* AI 이미지 생성 섹션 */
+        .ai-generation-section {
+            margin-bottom: 30px;
+        }
+
+        .prompt-input-section {
+            background: #f8f9ff;
+            padding: 30px;
+            border-radius: 15px;
+            margin-bottom: 30px;
+            border: 2px solid #e0e0e0;
+        }
+
+        .prompt-textarea {
+            width: 100%;
+            min-height: 120px;
+            padding: 20px;
+            border: 2px solid #ddd;
+            border-radius: 10px;
+            font-size: 1rem;
+            font-family: inherit;
+            resize: vertical;
+            transition: all 0.3s ease;
+        }
+
+        .prompt-textarea:focus {
+            outline: none;
+            border-color: #667eea;
+            box-shadow: 0 0 0 3px rgba(102, 126, 234, 0.1);
+        }
+
+        .prompt-examples {
+            margin-top: 20px;
+        }
+
+        .example-prompts {
+            display: flex;
+            gap: 10px;
+            flex-wrap: wrap;
+            margin-top: 10px;
+        }
+
+        .example-prompt {
+            background: white;
+            border: 1px solid #ddd;
+            padding: 8px 15px;
+            border-radius: 20px;
+            font-size: 0.9rem;
+            cursor: pointer;
+            transition: all 0.3s ease;
+        }
+
+        .example-prompt:hover {
+            background: #667eea;
+            color: white;
+            border-color: #667eea;
+        }
+
+        .generate-section {
+            display: flex;
+            gap: 15px;
+            margin-top: 20px;
+            flex-wrap: wrap;
+        }
+
+        .generate-btn {
+            background: linear-gradient(135deg, #667eea, #764ba2);
+            color: white;
+            border: none;
+            padding: 15px 30px;
+            border-radius: 10px;
+            font-size: 1rem;
+            font-weight: bold;
+            cursor: pointer;
+            transition: all 0.3s ease;
+            white-space: nowrap;
+        }
+
+        .generate-btn:hover {
+            transform: translateY(-2px);
+            box-shadow: 0 10px 25px rgba(102, 126, 234, 0.3);
+        }
+
+        .generate-btn:disabled {
+            background: #ccc;
+            cursor: not-allowed;
+            transform: none;
+            box-shadow: none;
+        }
+
+        .improve-btn {
+            background: linear-gradient(135deg, #28a745, #20c997);
+            color: white;
+            border: none;
+            padding: 15px 30px;
+            border-radius: 10px;
+            font-size: 1rem;
+            font-weight: bold;
+            cursor: pointer;
+            transition: all 0.3s ease;
+            white-space: nowrap;
+        }
+
+        .improve-btn:hover {
+            transform: translateY(-2px);
+            box-shadow: 0 10px 25px rgba(40, 167, 69, 0.3);
+        }
+
+        .improve-btn:disabled {
+            background: #ccc;
+            cursor: not-allowed;
+            transform: none;
+            box-shadow: none;
+        }
+
+        /* AI 이미지 결과 */
+        .ai-images-section {
+            display: none;
+            margin-bottom: 30px;
+        }
+
+        .ai-content-container {
+            display: flex;
+            gap: 20px;
+            height: 1200px;
+        }
+
+        .ai-images-panel {
+            width: 33.33%;
+            background: #f8f9ff;
+            border-radius: 15px;
+            border: 2px solid #e0e0e0;
+            display: flex;
+            flex-direction: column;
+            max-height: 1200px;
+        }
+
+        .ai-images-header {
+            padding: 20px;
+            border-bottom: 2px solid #e0e0e0;
+            text-align: center;
+            flex-shrink: 0;
+        }
+
+        .ai-image-count {
+            font-size: 1.1rem;
+            color: #666;
+            font-weight: bold;
+        }
+
+        .ai-images-scroll-container {
+            flex: 1;
+            overflow-y: auto;
+            padding: 15px;
+        }
+
+        .ai-images-scroll-container::-webkit-scrollbar {
+            width: 8px;
+        }
+
+        .ai-images-scroll-container::-webkit-scrollbar-track {
+            background: #f1f1f1;
+            border-radius: 10px;
+        }
+
+        .ai-images-scroll-container::-webkit-scrollbar-thumb {
+            background: #c1c1c1;
+            border-radius: 10px;
+        }
+
+        .ai-images-scroll-container::-webkit-scrollbar-thumb:hover {
+            background: #a8a8a8;
+        }
+
+        .ai-images-grid {
+            display: grid;
+            grid-template-columns: repeat(auto-fill, minmax(120px, 1fr));
+            gap: 10px;
+        }
+
+        .ai-result-panel {
+            width: 66.67%;
+            background: white;
+            border-radius: 15px;
+            border: 2px solid #e0e0e0;
+            display: flex;
+            flex-direction: column;
+            align-items: center;
+            justify-content: center;
+            padding: 20px;
+        }
+
+        .ai-result-placeholder {
+            color: #999;
+            font-size: 1.2em;
+            text-align: center;
+        }
+
+        .ai-image-item {
+            background: white;
+            border-radius: 10px;
+            padding: 10px;
+            cursor: pointer;
+            transition: all 0.3s ease;
+            border: 3px solid transparent;
+            position: relative;
+        }
+
+        .ai-image-item:hover {
+            transform: translateY(-3px);
+            box-shadow: 0 5px 15px rgba(0, 0, 0, 0.2);
+        }
+
+        .ai-image-item.selected {
+            border-color: #667eea;
+            background: #f0f2ff;
+            transform: translateY(-3px);
+            box-shadow: 0 8px 25px rgba(102, 126, 234, 0.3);
+        }
+
+        .ai-image-preview {
+            width: 100%;
+            height: 80px;
+            object-fit: cover;
+            border-radius: 5px;
+            margin-bottom: 5px;
+        }
+
+        .ai-image-info {
+            font-size: 0.7rem;
+            text-align: center;
+            color: #666;
         }
 
         /* 웹 스크래핑 섹션 */
@@ -229,6 +466,15 @@
             border-radius: 10px;
             margin: 20px 0;
             border-left: 4px solid #ffc107;
+        }
+
+        .info-message {
+            background: #d1ecf1;
+            color: #0c5460;
+            padding: 15px;
+            border-radius: 10px;
+            margin: 20px 0;
+            border-left: 4px solid #17a2b8;
         }
 
         /* 웹 이미지 결과 */
@@ -570,41 +816,50 @@
                 gap: 20px;
             }
 
-            .web-content-container {
+            .web-content-container, .ai-content-container {
                 flex-direction: column;
                 height: auto;
             }
 
-            .web-images-panel {
+            .web-images-panel, .ai-images-panel {
                 width: 100%;
                 height: 300px;
             }
 
-            .web-result-panel {
+            .web-result-panel, .ai-result-panel {
                 width: 100%;
                 min-height: 800px;
             }
 
-            .web-controls-section {
+            .web-controls-section, .ai-controls-section {
                 margin-bottom: 15px;
             }
 
-            .web-controls-section div[style*="grid-template-columns"] {
+            .web-controls-section div[style*="grid-template-columns"],
+            .ai-controls-section div[style*="grid-template-columns"] {
                 grid-template-columns: repeat(auto-fit, minmax(150px, 1fr)) !important;
                 gap: 15px !important;
             }
 
-            .web-images-grid {
+            .web-images-grid, .ai-images-grid {
                 grid-template-columns: repeat(auto-fill, minmax(100px, 1fr));
                 gap: 8px;
             }
 
-            .web-image-preview {
+            .web-image-preview, .ai-image-preview {
                 height: 80px;
             }
 
             .mode-tabs {
                 flex-direction: column;
+            }
+
+            .generate-section {
+                flex-direction: column;
+            }
+
+            .generate-btn, .improve-btn {
+                width: 100%;
             }
         }
     </style>
@@ -613,7 +868,7 @@
     <div class="container">
         <div class="header">
             <h1>🎨 컬러링북 메이커</h1>
-            <p>사진을 업로드하거나 웹에서 수집하여 컬러링북으로 변환해보세요!</p>
+            <p>사진을 업로드하거나 웹에서 수집하거나 Gemini AI로 최적화하여 컬러링북으로 변환해보세요!</p>
         </div>
 
         <!-- 모드 선택 탭 -->
@@ -623,6 +878,9 @@
             </button>
             <button class="mode-tab" onclick="switchMode('web')">
                 🌐 웹 이미지 수집
+            </button>
+            <button class="mode-tab" onclick="switchMode('ai')">
+                🤖 Gemini AI 생성
             </button>
         </div>
 
@@ -743,6 +1001,126 @@
             </div>
         </div>
 
+        <!-- AI 이미지 생성 모드 -->
+        <div id="aiMode" class="mode-content">
+            <div class="ai-generation-section">
+                <div class="prompt-input-section">
+                    <textarea class="prompt-textarea" 
+                              id="promptInput" 
+                              placeholder="🎨 Gemini가 어떤 컬러링북을 만들어드릴까요? 상상하는 장면을 자세히 설명해주세요!
+
+💡 예시:
+- 왕관을 쓴 사자가 정글에서 원숭이들과 함께 파티하는 모습
+- 무지개 위에서 펭귄들이 썰매를 타고 노는 겨울 풍경  
+- 마법 지팡이를 든 토끼가 당근 밭에서 마법을 부리는 장면
+- 별이 가득한 밤하늘 아래 캠프파이어 주변에 앉은 동물 친구들
+- 거대한 케이크 위에서 춤추는 작은 요정들
+
+✨ 팁: 구체적이고 재미있게 설명할수록 더 멋진 컬러링북이 만들어져요!">
+                    </textarea>
+                    
+                    <div class="generate-section">
+                        <button class="improve-btn" id="improveBtn" onclick="improvePrompt()">
+                            ✨ 프롬프트 개선하기
+                        </button>
+                        <button class="generate-btn" id="generateBtn" onclick="generateImages()">
+                            🎨 Gemini 최적화 이미지 생성
+                        </button>
+                    </div>
+
+                    <div class="info-message">
+                        <strong>🤖 Gemini AI 강화 기능:</strong> 
+                        <br>• <strong>스마트 프롬프트 개선</strong>: Gemini가 더 상세하고 효과적인 설명으로 변환
+                        <br>• <strong>다양한 스타일 생성</strong>: 컬러링북에 적합한 4가지 스타일 자동 생성
+                        <br>• <strong>최적화된 번역</strong>: 한국어 설명을 이미지 생성에 최적화된 영어로 변환
+                        <br>• <strong>고품질 결과</strong>: Gemini 최적화 + 고성능 이미지 생성 API 결합
+                        <br><br>
+                        <strong>💡 추천 워크플로우:</strong> "프롬프트 개선하기" → "이미지 생성" → 마음에 드는 이미지 선택!
+                    </div>
+
+                    <div class="prompt-examples">
+                        <p style="margin-bottom: 10px; font-weight: bold;">💡 예시 프롬프트:</p>
+                        <div class="example-prompts">
+                            <span class="example-prompt" onclick="setExamplePrompt('큰 눈을 가진 귀여운 고양이가 꽃밭에서 나비들과 함께 노는 모습')">고양이와 나비들</span>
+                            <span class="example-prompt" onclick="setExamplePrompt('마법사 모자를 쓴 부엉이가 마법의 숲에 있는 버섯집 앞에 앉아있는 장면')">마법사 부엉이</span>
+                            <span class="example-prompt" onclick="setExamplePrompt('아름다운 드레스를 입은 공주가 성 앞에서 유니콘과 함께 서있는 모습')">공주와 유니콘</span>
+                            <span class="example-prompt" onclick="setExamplePrompt('바다 속에서 수영하는 귀여운 돌고래들과 형형색색의 물고기들이 있는 산호초')">바다 속 친구들</span>
+                            <span class="example-prompt" onclick="setExamplePrompt('우주복을 입은 아이가 달 표면에서 외계인 친구들과 함께 놀고 있는 장면')">우주 모험</span>
+                            <span class="example-prompt" onclick="setExamplePrompt('큰 나무 아래에서 토끼와 다람쥐가 함께 피크닉을 하고 있는 평화로운 숲')">숲 속 피크닉</span>
+                        </div>
+                    </div>
+                </div>
+
+                <!-- AI 이미지 결과 -->
+                <div class="ai-images-section" id="aiImagesSection">
+                    <!-- 상단: 옵션 컨트롤 -->
+                    <div class="ai-controls-section" id="aiControlsSection" style="display: none;">
+                        <div style="background: #f8f9ff; padding: 25px; border-radius: 15px; margin-bottom: 20px; border: 2px solid #e0e0e0;">
+                            <div style="display: grid; grid-template-columns: repeat(auto-fit, minmax(180px, 1fr)); gap: 25px; align-items: end; max-width: 1000px; margin: 0 auto;">
+                                <div style="display: flex; flex-direction: column; align-items: center;">
+                                    <label style="color: #333; font-weight: 600; margin-bottom: 10px; font-size: 1rem;">윤곽선 강도</label>
+                                    <input type="range" id="aiEdgeThreshold" style="width: 150px; height: 6px;" min="50" max="300" value="170">
+                                    <span id="aiEdgeValue" style="font-size: 0.9rem; color: #666; margin-top: 5px;">170</span>
+                                </div>
+                                <div style="display: flex; flex-direction: column; align-items: center;">
+                                    <label style="color: #333; font-weight: 600; margin-bottom: 10px; font-size: 1rem;">선 굵기</label>
+                                    <input type="range" id="aiLineThickness" style="width: 150px; height: 6px;" min="0.2" max="2" value="1" step="0.2">
+                                    <span id="aiThicknessValue" style="font-size: 0.9rem; color: #666; margin-top: 5px;">1</span>
+                                </div>
+                                <div style="display: flex; flex-direction: column; align-items: center;">
+                                    <label style="color: #333; font-weight: 600; margin-bottom: 10px; font-size: 1rem;">📄 종이 사이즈</label>
+                                    <select id="aiPaperSize" style="background: white; border: 2px solid #ddd; border-radius: 10px; padding: 12px; font-size: 0.9rem; font-weight: 600; width: 150px;">
+                                        <option value="a4">A4 (210×297mm)</option>
+                                        <option value="a5">A5 (148×210mm)</option>
+                                        <option value="b4">B4 (250×353mm)</option>
+                                        <option value="b5">B5 (176×250mm)</option>
+                                        <option value="5x7">5×7 인화용 (5×7")</option>
+                                        <option value="4x6">4×6 인화용 (4×6")</option>
+                                    </select>
+                                </div>
+                                <div style="display: flex; flex-direction: column; align-items: center;">
+                                    <label style="color: #333; font-weight: 600; margin-bottom: 10px; font-size: 1rem;">🔄 방향</label>
+                                    <select id="aiOrientation" style="background: white; border: 2px solid #ddd; border-radius: 10px; padding: 12px; font-size: 0.9rem; font-weight: 600; width: 150px;">
+                                        <option value="portrait">세로 (Portrait)</option>
+                                        <option value="landscape">가로 (Landscape)</option>
+                                    </select>
+                                </div>
+                                <div style="display: flex; flex-direction: column; align-items: center;">
+                                    <label style="color: #333; font-weight: 600; margin-bottom: 10px; font-size: 1rem;">🌈 가이드 포함</label>
+                                    <div style="display: flex; align-items: center; gap: 10px; background: white; padding: 12px 20px; border-radius: 10px; border: 2px solid #ddd;">
+                                        <input type="checkbox" id="aiIncludeGuide" checked style="width: 20px; height: 20px;">
+                                        <label for="aiIncludeGuide" style="cursor: pointer; color: #333; font-weight: 600; margin: 0; font-size: 0.9rem;">색칠 가이드 포함</label>
+                                    </div>
+                                </div>
+                            </div>
+                        </div>
+                    </div>
+
+                    <!-- 하단: 이미지 리스트 + 결과 -->
+                    <div class="ai-content-container">
+                        <!-- 왼쪽: 이미지 리스트 (1/3) -->
+                        <div class="ai-images-panel">
+                            <div class="ai-images-header">
+                                <div class="ai-image-count" id="aiImageCount">생성된 이미지: 0개</div>
+                                <p style="color: #666; margin-top: 10px; font-size: 0.9rem;">이미지를 클릭하여 선택하세요</p>
+                            </div>
+                            <div class="ai-images-scroll-container">
+                                <div class="ai-images-grid" id="aiImagesGrid"></div>
+                            </div>
+                        </div>
+                        
+                        <!-- 오른쪽: 변환 결과 (2/3) -->
+                        <div class="ai-result-panel" id="aiResultPanel">
+                            <div class="ai-result-placeholder">
+                                <div style="font-size: 3em; margin-bottom: 15px;">🤖</div>
+                                <div>이미지를 생성하면 컬러링북으로 변환됩니다</div>
+                            </div>
+                        </div>
+                    </div>
+                </div>
+            </div>
+        </div>
+
         <!-- 로딩 -->
         <div class="loading" id="loading">
             <div class="spinner"></div>
@@ -813,6 +1191,11 @@
         let finalCanvas = null;
         let allWebImages = [];
         let selectedWebImageIndex = -1;
+        let allAiImages = [];
+        let selectedAiImageIndex = -1;
+
+        // Gemini API 설정
+        const GEMINI_API_KEY = 'AIzaSyDUxQZExYN5FBNwNFB6aR6zp5v-zJL5OdM';
 
         // DOM 요소
         const fileInput = document.getElementById('fileInput');
@@ -921,8 +1304,10 @@
             
             if (mode === 'upload') {
                 document.getElementById('uploadMode').classList.add('active');
-            } else {
+            } else if (mode === 'web') {
                 document.getElementById('webMode').classList.add('active');
+            } else if (mode === 'ai') {
+                document.getElementById('aiMode').classList.add('active');
             }
 
             // 상태 초기화
@@ -933,6 +1318,7 @@
             currentImage = null;
             finalCanvas = null;
             selectedWebImageIndex = -1;
+            selectedAiImageIndex = -1;
             controls.classList.remove('show');
             resultSection.style.display = 'none';
             hideError();
@@ -942,6 +1328,12 @@
             const webControlsSection = document.getElementById('webControlsSection');
             if (webControlsSection) {
                 webControlsSection.style.display = 'none';
+            }
+            
+            // AI 컨트롤 섹션 숨기기
+            const aiControlsSection = document.getElementById('aiControlsSection');
+            if (aiControlsSection) {
+                aiControlsSection.style.display = 'none';
             }
             
             // 웹 결과 패널 초기화
@@ -954,6 +1346,716 @@
                     </div>
                 `;
             }
+
+            // AI 결과 패널 초기화
+            const aiResultPanel = document.getElementById('aiResultPanel');
+            if (aiResultPanel) {
+                aiResultPanel.innerHTML = `
+                    <div class="ai-result-placeholder">
+                        <div style="font-size: 3em; margin-bottom: 15px;">🤖</div>
+                        <div>이미지를 생성하면 컬러링북으로 변환됩니다</div>
+                    </div>
+                `;
+            }
+        }
+
+        // AI 이미지 생성 관련 함수들
+        function setExamplePrompt(prompt) {
+            document.getElementById('promptInput').value = prompt;
+        }
+
+        async function improvePrompt() {
+            const promptInput = document.getElementById('promptInput');
+            const userPrompt = promptInput.value.trim();
+            
+            if (!userPrompt) {
+                showError('먼저 설명을 입력해주세요.');
+                return;
+            }
+
+            const improveBtn = document.getElementById('improveBtn');
+            improveBtn.disabled = true;
+            improveBtn.textContent = 'Gemini가 개선 중...';
+
+            try {
+                const improvedPrompt = await callGeminiAPI(`다음 설명을 컬러링북에 적합한 더 상세하고 아름다운 이미지 설명으로 개선해주세요. 
+
+사용자 설명: "${userPrompt}"
+
+개선 요구사항:
+1. 아이들이 색칠하기 좋도록 명확하고 단순한 형태를 강조
+2. 매력적이고 재미있는 장면 구성
+3. 적절한 크기의 색칠 영역들
+4. 컬러링북에 어울리는 구체적인 디테일 추가
+5. 한국어로 자연스럽고 상세하게 작성
+
+개선된 설명만 답변해주세요:`);
+
+                promptInput.value = improvedPrompt;
+                
+            } catch (error) {
+                console.error('프롬프트 개선 오류:', error);
+                showError('프롬프트 개선 중 오류가 발생했습니다. Gemini API 연결을 확인해주세요.');
+            } finally {
+                improveBtn.disabled = false;
+                improveBtn.textContent = '✨ 프롬프트 개선하기';
+            }
+        }
+
+        async function generateImages() {
+            const promptInput = document.getElementById('promptInput');
+            const userPrompt = promptInput.value.trim();
+            
+            if (!userPrompt) {
+                showError('먼저 설명을 입력해주세요.');
+                return;
+            }
+
+            showLoading('Gemini가 프롬프트를 최적화하고 있습니다...');
+            hideError();
+            hideAiImages();
+
+            const generateBtn = document.getElementById('generateBtn');
+            generateBtn.disabled = true;
+            generateBtn.textContent = 'Gemini 작업 중...';
+
+            try {
+                // 1단계: Gemini로 컬러링북 최적화 프롬프트 생성
+                showLoading('1/3 - Gemini가 컬러링북 프롬프트를 최적화하고 있습니다...');
+                const optimizedPrompt = await generateOptimizedColoringPrompt(userPrompt);
+                
+                // 2단계: Gemini로 영어 번역 및 여러 스타일 버전 생성
+                showLoading('2/3 - Gemini가 다양한 스타일의 프롬프트를 생성하고 있습니다...');
+                const stylePrompts = await generateMultipleStylePrompts(optimizedPrompt);
+                
+                // 3단계: 무료 이미지 생성 API로 이미지 생성
+                showLoading('3/3 - 고품질 이미지를 생성하고 있습니다...');
+                const generatedImages = await generateImagesWithFreeAPI(stylePrompts);
+                
+                if (generatedImages.length === 0) {
+                    throw new Error('이미지 생성에 실패했습니다.');
+                }
+
+                allAiImages = generatedImages;
+                selectedAiImageIndex = -1;
+                displayAiImages();
+
+            } catch (error) {
+                console.error('이미지 생성 오류:', error);
+                
+                let errorMessage = `이미지 생성 중 오류가 발생했습니다: ${error.message}`;
+                
+                if (error.message.includes('API')) {
+                    errorMessage += '\n\n🔧 해결 방법:\n• API 키가 올바른지 확인해주세요\n• 인터넷 연결 상태를 확인해주세요\n• 잠시 후 다시 시도해주세요';
+                } else if (error.message.includes('quota') || error.message.includes('limit')) {
+                    errorMessage += '\n\n⏰ API 사용량 제한에 도달했습니다. 잠시 후 다시 시도해주세요.';
+                } else {
+                    errorMessage += '\n\n💡 다른 방법:\n• 프롬프트를 더 간단하게 수정해보세요\n• "프롬프트 개선하기"를 먼저 시도해보세요\n• 파일 업로드나 웹 수집 모드를 이용해보세요';
+                }
+                
+                showError(errorMessage);
+            } finally {
+                hideLoading();
+                generateBtn.disabled = false;
+                generateBtn.textContent = '🎨 Gemini 최적화 이미지 생성';
+            }
+        }
+
+        async function generateOptimizedColoringPrompt(userPrompt) {
+            const optimizationPrompt = `다음 사용자 설명을 컬러링북에 최적화된 이미지 생성 프롬프트로 변환해주세요. 
+            
+사용자 설명: "${userPrompt}"
+
+요구사항:
+1. 아이들이 색칠하기 좋은 명확하고 단순한 형태
+2. 복잡하지 않은 선과 구성
+3. 매력적이고 재미있는 요소들
+4. 적절한 크기의 영역들 (너무 세밀하지 않게)
+5. 컬러링북 스타일에 맞는 구성
+
+결과는 영어로 된 상세한 이미지 생성 프롬프트로만 답변해주세요.`;
+
+            try {
+                const response = await callGeminiAPI(optimizationPrompt);
+                return response.trim();
+            } catch (error) {
+                console.warn('프롬프트 최적화 실패, 원본 사용:', error);
+                return `coloring book style illustration of ${userPrompt}, simple line art, clean outlines, perfect for children coloring, black and white line drawing`;
+            }
+        }
+
+        async function generateMultipleStylePrompts(optimizedPrompt) {
+            try {
+                const stylePrompt = `다음 컬러링북 프롬프트를 영어로 번역하고, 4가지 다른 스타일로 변형해주세요:
+
+"${optimizedPrompt}"
+
+각각을 다음 형식으로 답변해주세요:
+1. 기본 컬러링북 스타일
+2. 만화/카툰 스타일  
+3. 귀여운/카와이 스타일
+4. 단순한 일러스트 스타일
+
+각 스타일은 한 줄로, 영어로만 답변해주세요.`;
+
+                const response = await callGeminiAPI(stylePrompt);
+                
+                // 응답을 파싱하여 배열로 변환
+                const lines = response.split('\n').filter(line => line.trim());
+                const prompts = [];
+                
+                for (const line of lines) {
+                    const cleanLine = line.replace(/^\d+\.\s*/, '').trim();
+                    if (cleanLine && cleanLine.length > 10) {
+                        prompts.push(cleanLine);
+                    }
+                }
+                
+                // 최소 1개는 보장
+                if (prompts.length === 0) {
+                    prompts.push(`coloring book style illustration of ${optimizedPrompt}, simple line art, clean outlines, perfect for children coloring`);
+                }
+                
+                return prompts;
+                
+            } catch (error) {
+                console.warn('스타일 프롬프트 생성 실패, 기본값 사용:', error);
+                const basePrompt = `coloring book style illustration of ${optimizedPrompt}, simple line art, clean outlines, perfect for children coloring`;
+                return [
+                    `${basePrompt}, black and white line drawing`,
+                    `${basePrompt}, cartoon style, simple shapes`,
+                    `${basePrompt}, kawaii style, cute design`,
+                    `${basePrompt}, minimalist illustration style`
+                ];
+            }
+        }
+
+        async function generateImagesWithFreeAPI(stylePrompts) {
+            const images = [];
+            
+            for (let i = 0; i < stylePrompts.length; i++) {
+                try {
+                    showLoading(`3/3 - 이미지 ${i + 1}/${stylePrompts.length} 생성 중...`);
+                    
+                    const prompt = stylePrompts[i];
+                    const coloringPrompt = `coloring book style, simple line art, black and white outline, ${prompt}, clean simple design, suitable for children coloring`;
+                    
+                    const imageUrl = `https://image.pollinations.ai/prompt/${encodeURIComponent(coloringPrompt)}?width=512&height=512&seed=${Date.now() + i}&nologo=true`;
+                    
+                    // 이미지가 실제로 로드되는지 확인
+                    await checkImageLoad(imageUrl);
+                    
+                    images.push({
+                        src: imageUrl,
+                        alt: `Gemini 최적화 이미지 ${i + 1}`,
+                        width: 512,
+                        height: 512,
+                        prompt: coloringPrompt
+                    });
+                } catch (error) {
+                    console.warn(`이미지 ${i + 1} 생성 실패:`, error);
+                    
+                    // 실패한 경우 간단한 대체 이미지 시도
+                    try {
+                        const fallbackPrompt = `coloring book ${stylePrompts[i]} simple drawing`;
+                        const fallbackUrl = `https://image.pollinations.ai/prompt/${encodeURIComponent(fallbackPrompt)}?width=512&height=512&seed=${Date.now() + i + 1000}`;
+                        
+                        await checkImageLoad(fallbackUrl);
+                        
+                        images.push({
+                            src: fallbackUrl,
+                            alt: `대체 이미지 ${i + 1}`,
+                            width: 512,
+                            height: 512,
+                            prompt: fallbackPrompt
+                        });
+                    } catch (fallbackError) {
+                        console.warn(`대체 이미지 ${i + 1} 생성도 실패:`, fallbackError);
+                    }
+                }
+            }
+
+            return images;
+        }
+
+        async function callGeminiAPI(prompt) {
+            const response = await fetch(`https://generativelanguage.googleapis.com/v1beta/models/gemini-pro:generateContent?key=${GEMINI_API_KEY}`, {
+                method: 'POST',
+                headers: {
+                    'Content-Type': 'application/json',
+                },
+                body: JSON.stringify({
+                    contents: [{
+                        parts: [{
+                            text: prompt
+                        }]
+                    }]
+                })
+            });
+
+            if (!response.ok) {
+                const errorData = await response.json();
+                throw new Error(`Gemini API 호출 실패: ${errorData.error?.message || response.status}`);
+            }
+
+            const data = await response.json();
+            
+            if (!data.candidates || !data.candidates[0] || !data.candidates[0].content) {
+                throw new Error('Gemini API 응답이 올바르지 않습니다.');
+            }
+            
+            return data.candidates[0].content.parts[0].text;
+        }
+
+        function checkImageLoad(url) {
+            return new Promise((resolve, reject) => {
+                const img = new Image();
+                img.onload = () => resolve(url);
+                img.onerror = () => reject(new Error('이미지 로드 실패'));
+                img.src = url;
+                
+                // 타임아웃 설정
+                setTimeout(() => reject(new Error('이미지 로드 타임아웃')), 10000);
+            });
+        }
+
+        function displayAiImages() {
+            const aiImagesSection = document.getElementById('aiImagesSection');
+            const aiImagesGrid = document.getElementById('aiImagesGrid');
+            const aiImageCount = document.getElementById('aiImageCount');
+            
+            aiImageCount.textContent = `생성된 이미지: ${allAiImages.length}개`;
+            aiImagesGrid.innerHTML = '';
+            selectedAiImageIndex = -1;
+
+            allAiImages.forEach((image, index) => {
+                const imageItem = document.createElement('div');
+                imageItem.className = 'ai-image-item';
+                imageItem.onclick = () => selectAiImage(index);
+                
+                imageItem.innerHTML = `
+                    <img src="${image.src}" alt="${image.alt}" class="ai-image-preview" onerror="this.parentElement.style.display='none'">
+                    <div class="ai-image-info">
+                        <div style="font-weight: bold;">🤖 ${image.width} × ${image.height}</div>
+                        <div style="font-size: 0.7rem; margin-top: 3px;">AI 생성 이미지 ${index + 1}</div>
+                    </div>
+                `;
+                
+                aiImagesGrid.appendChild(imageItem);
+            });
+
+            aiImagesSection.style.display = 'block';
+            
+            // 이미지가 생성되면 컨트롤 섹션도 미리 표시
+            const aiControlsSection = document.getElementById('aiControlsSection');
+            if (aiControlsSection && allAiImages.length > 0) {
+                aiControlsSection.style.display = 'block';
+                setupAiControls();
+            }
+        }
+
+        function selectAiImage(index) {
+            // 기존 선택 해제
+            document.querySelectorAll('.ai-image-item').forEach(item => {
+                item.classList.remove('selected');
+            });
+            
+            // 새로운 선택
+            const imageItem = document.querySelectorAll('.ai-image-item')[index];
+            imageItem.classList.add('selected');
+            selectedAiImageIndex = index;
+            
+            // 이미지 로드
+            const selectedImage = allAiImages[index];
+            loadAiImageFromUrl(selectedImage.src);
+        }
+
+        async function loadAiImageFromUrl(url) {
+            try {
+                showLoading('이미지를 로드하고 있습니다...');
+                
+                const img = new Image();
+                img.onload = function() {
+                    currentImage = img;
+                    processImageForAi();
+                    hideLoading();
+                };
+                
+                img.onerror = function() {
+                    hideLoading();
+                    showError('이미지를 로드할 수 없습니다. 다른 이미지를 선택해주세요.');
+                };
+                
+                img.src = url;
+                
+            } catch (error) {
+                hideLoading();
+                console.error('AI 이미지 로드 오류:', error);
+                showError(`이미지를 로드할 수 없습니다: ${error.message}`);
+            }
+        }
+
+        function processImageForAi() {
+            if (!currentImage) return;
+
+            // 상단 옵션 컨트롤 표시
+            const aiControlsSection = document.getElementById('aiControlsSection');
+            if (aiControlsSection.style.display === 'none') {
+                aiControlsSection.style.display = 'block';
+                setupAiControls();
+            }
+
+            const aiResultPanel = document.getElementById('aiResultPanel');
+            
+            aiResultPanel.innerHTML = `
+                <div style="width: 100%; height: 100%; display: flex; flex-direction: column; align-items: center; justify-content: center; background: white; border-radius: 10px; border: 2px solid #e0e0e0; padding: 20px;">
+                    <div id="aiLoadingArea" style="display: none; text-align: center;">
+                        <div style="border: 4px solid #f3f3f3; border-top: 4px solid #667eea; border-radius: 50%; width: 40px; height: 40px; animation: spin 1s linear infinite; margin: 0 auto 15px;"></div>
+                        <p style="color: #666; font-size: 1rem;">변환 중...</p>
+                    </div>
+                    <div id="aiResultImageContainer" style="max-width: 100%; max-height: 100%; display: flex; flex-direction: column; align-items: center;">
+                        <h3 id="aiResultTitle" style="color: #333; margin-bottom: 20px; font-size: 1.4em; text-align: center;">🖍️ 컬러링 시트</h3>
+                        <img id="aiColoringImage" style="max-width: 100%; max-height: 1000px; border-radius: 10px; box-shadow: 0 5px 20px rgba(0,0,0,0.15);" alt="Coloring result">
+                        <button onclick="downloadAiColoring()" style="margin-top: 25px; background: linear-gradient(45deg, #667eea, #764ba2); color: white; border: none; padding: 15px 35px; border-radius: 25px; font-size: 1.1rem; font-weight: 600; cursor: pointer; transition: all 0.3s ease; text-transform: uppercase; letter-spacing: 1px; box-shadow: 0 5px 15px rgba(102, 126, 234, 0.3);">
+                            컬러링 시트 다운로드
+                        </button>
+                    </div>
+                </div>
+            `;
+            
+            processAiImage();
+        }
+
+        function setupAiControls() {
+            const aiEdgeThreshold = document.getElementById('aiEdgeThreshold');
+            const aiLineThickness = document.getElementById('aiLineThickness');
+            const aiPaperSize = document.getElementById('aiPaperSize');
+            const aiOrientation = document.getElementById('aiOrientation');
+            const aiIncludeGuide = document.getElementById('aiIncludeGuide');
+            const aiEdgeValue = document.getElementById('aiEdgeValue');
+            const aiThicknessValue = document.getElementById('aiThicknessValue');
+
+            aiEdgeThreshold.addEventListener('input', (e) => {
+                aiEdgeValue.textContent = e.target.value;
+            });
+
+            aiEdgeThreshold.addEventListener('change', (e) => {
+                if (currentImage) processAiImage();
+            });
+
+            aiLineThickness.addEventListener('input', (e) => {
+                aiThicknessValue.textContent = e.target.value;
+            });
+
+            aiLineThickness.addEventListener('change', (e) => {
+                if (currentImage) processAiImage();
+            });
+
+            aiPaperSize.addEventListener('change', () => {
+                if (currentImage) processAiImage();
+            });
+
+            aiOrientation.addEventListener('change', () => {
+                if (currentImage) processAiImage();
+            });
+
+            aiIncludeGuide.addEventListener('change', () => {
+                if (currentImage) processAiImage();
+            });
+        }
+
+        function processAiImage() {
+            if (!currentImage) return;
+
+            const aiLoadingArea = document.getElementById('aiLoadingArea');
+            const aiResultImageContainer = document.getElementById('aiResultImageContainer');
+            const aiColoringImage = document.getElementById('aiColoringImage');
+            const aiResultTitle = document.getElementById('aiResultTitle');
+            
+            aiLoadingArea.style.display = 'block';
+            aiResultImageContainer.style.display = 'none';
+
+            setTimeout(() => {
+                try {
+                    const aiEdgeThreshold = document.getElementById('aiEdgeThreshold');
+                    const aiLineThickness = document.getElementById('aiLineThickness');
+                    const aiPaperSize = document.getElementById('aiPaperSize');
+                    const aiOrientation = document.getElementById('aiOrientation');
+                    const aiIncludeGuide = document.getElementById('aiIncludeGuide');
+                    
+                    const threshold = parseInt(aiEdgeThreshold.value);
+                    const thickness = parseFloat(aiLineThickness.value);
+                    
+                    const selectedSize = paperSizes[aiPaperSize.value];
+                    const isLandscape = aiOrientation.value === 'landscape';
+                    
+                    const PAPER_WIDTH = isLandscape ? selectedSize.height : selectedSize.width;
+                    const PAPER_HEIGHT = isLandscape ? selectedSize.width : selectedSize.height;
+                    
+                    const includeGuideOption = aiIncludeGuide.checked;
+                    
+                    // 이미지 처리 (웹 모드와 동일한 로직)
+                    const processedCanvas = processImageToColoring(currentImage, threshold, thickness, PAPER_WIDTH, PAPER_HEIGHT, includeGuideOption, isLandscape);
+                    
+                    finalCanvas = processedCanvas;
+                    aiColoringImage.src = processedCanvas.toDataURL();
+                    
+                    const sizeName = selectedSize.name;
+                    const orientationName = isLandscape ? '가로' : '세로';
+                    aiResultTitle.textContent = includeGuideOption ? 
+                        `🖍️ ${sizeName} ${orientationName} 컬러링 시트 (가이드 포함)` : 
+                        `🖍️ ${sizeName} ${orientationName} 컬러링 시트`;
+                    
+                    aiResultImageContainer.style.display = 'flex';
+                    
+                } catch (error) {
+                    console.error('AI 이미지 처리 오류:', error);
+                    showError('이미지 처리 중 오류가 발생했습니다.');
+                } finally {
+                    aiLoadingArea.style.display = 'none';
+                }
+            }, 300);
+        }
+
+        function downloadAiColoring() {
+            if (!finalCanvas) {
+                showError('먼저 이미지를 처리해주세요.');
+                return;
+            }
+
+            const aiPaperSize = document.getElementById('aiPaperSize');
+            const aiOrientation = document.getElementById('aiOrientation');
+            
+            const selectedSize = paperSizes[aiPaperSize.value];
+            const isLandscape = aiOrientation.value === 'landscape';
+            const safeName = selectedSize.name.replace(/×/g, 'x');
+            const orientationSuffix = isLandscape ? '-landscape' : '-portrait';
+            const filename = `ai-coloring-sheet-${safeName.toLowerCase()}${orientationSuffix}.png`;
+
+            finalCanvas.toBlob(function(blob) {
+                if (blob) {
+                    const url = URL.createObjectURL(blob);
+                    const link = document.createElement('a');
+                    link.href = url;
+                    link.download = filename;
+                    document.body.appendChild(link);
+                    link.click();
+                    document.body.removeChild(link);
+                    URL.revokeObjectURL(url);
+                } else {
+                    const link = document.createElement('a');
+                    link.download = filename;
+                    link.href = finalCanvas.toDataURL('image/png');
+                    link.click();
+                }
+            }, 'image/png', 0.95);
+        }
+
+        function hideAiImages() {
+            document.getElementById('aiImagesSection').style.display = 'none';
+            const aiControlsSection = document.getElementById('aiControlsSection');
+            if (aiControlsSection) {
+                aiControlsSection.style.display = 'none';
+            }
+        }
+
+        // 공통 이미지 처리 함수
+        function processImageToColoring(image, threshold, thickness, paperWidth, paperHeight, includeGuide, isLandscape) {
+            // 가이드 이미지 크기
+            let guideRatio = 0.25;
+            if (paperWidth < 400) guideRatio = 0.35;
+            
+            let GUIDE_WIDTH, GUIDE_HEIGHT;
+            if (isLandscape) {
+                GUIDE_WIDTH = paperWidth * guideRatio;
+                GUIDE_HEIGHT = paperHeight * 0.8;
+            } else {
+                GUIDE_WIDTH = paperWidth * guideRatio;
+                GUIDE_HEIGHT = paperHeight * guideRatio;
+            }
+            
+            // 컬러링 영역 크기
+            let COLORING_WIDTH, COLORING_HEIGHT, coloringStartX, coloringStartY;
+            const margin = paperWidth < 400 ? 10 : 20;
+            const guideMargin = paperWidth < 400 ? 20 : 30;
+            
+            if (includeGuide) {
+                if (isLandscape) {
+                    COLORING_WIDTH = paperWidth - GUIDE_WIDTH - guideMargin - margin;
+                    COLORING_HEIGHT = paperHeight - (margin * 2);
+                    coloringStartX = GUIDE_WIDTH + guideMargin;
+                    coloringStartY = margin;
+                } else {
+                    COLORING_WIDTH = paperWidth - margin;
+                    COLORING_HEIGHT = paperHeight - GUIDE_HEIGHT - guideMargin;
+                    coloringStartX = margin / 2;
+                    coloringStartY = GUIDE_HEIGHT + guideMargin;
+                }
+            } else {
+                COLORING_WIDTH = paperWidth - (margin * 2);
+                COLORING_HEIGHT = paperHeight - (margin * 2);
+                coloringStartX = margin;
+                coloringStartY = margin;
+            }
+            
+            // 종이 크기 캔버스 생성
+            const paperCanvas = document.createElement('canvas');
+            const paperCtx = paperCanvas.getContext('2d');
+            paperCanvas.width = paperWidth;
+            paperCanvas.height = paperHeight;
+            
+            // 흰색 배경
+            paperCtx.fillStyle = 'white';
+            paperCtx.fillRect(0, 0, paperWidth, paperHeight);
+            
+            // 컬러링 이미지 생성을 위한 임시 캔버스
+            const tempCanvas = document.createElement('canvas');
+            const tempCtx = tempCanvas.getContext('2d');
+            tempCanvas.width = image.width;
+            tempCanvas.height = image.height;
+            
+            // 원본 이미지 그리기
+            tempCtx.drawImage(image, 0, 0);
+            
+            // 이미지 데이터 가져오기
+            const imageData = tempCtx.getImageData(0, 0, tempCanvas.width, tempCanvas.height);
+            const data = imageData.data;
+            
+            // 그레이스케일 변환 및 엣지 검출
+            const grayData = new Uint8ClampedArray(data.length);
+            
+            // 그레이스케일 변환
+            for (let i = 0; i < data.length; i += 4) {
+                const gray = data[i] * 0.299 + data[i + 1] * 0.587 + data[i + 2] * 0.114;
+                grayData[i] = gray;
+                grayData[i + 1] = gray;
+                grayData[i + 2] = gray;
+                grayData[i + 3] = 255;
+            }
+            
+            // 엣지 검출
+            const edgeData = new Uint8ClampedArray(data.length);
+            
+            for (let y = 1; y < tempCanvas.height - 1; y++) {
+                for (let x = 1; x < tempCanvas.width - 1; x++) {
+                    const idx = (y * tempCanvas.width + x) * 4;
+                    
+                    // 주변 픽셀들의 밝기 값
+                    const tl = grayData[((y-1) * tempCanvas.width + (x-1)) * 4];
+                    const tm = grayData[((y-1) * tempCanvas.width + x) * 4];
+                    const tr = grayData[((y-1) * tempCanvas.width + (x+1)) * 4];
+                    const ml = grayData[(y * tempCanvas.width + (x-1)) * 4];
+                    const mr = grayData[(y * tempCanvas.width + (x+1)) * 4];
+                    const bl = grayData[((y+1) * tempCanvas.width + (x-1)) * 4];
+                    const bm = grayData[((y+1) * tempCanvas.width + x) * 4];
+                    const br = grayData[((y+1) * tempCanvas.width + (x+1)) * 4];
+                    
+                    // Sobel 연산자
+                    const gx = (tr + 2*mr + br) - (tl + 2*ml + bl);
+                    const gy = (bl + 2*bm + br) - (tl + 2*tm + tr);
+                    const magnitude = Math.sqrt(gx*gx + gy*gy);
+                    
+                    // 엣지인지 판단
+                    if (magnitude > threshold) {
+                        const effectiveThickness = Math.max(thickness, 0.5);
+                        const radiusSquared = effectiveThickness * effectiveThickness;
+                        
+                        const minRange = Math.floor(-effectiveThickness - 0.5);
+                        const maxRange = Math.ceil(effectiveThickness + 0.5);
+                        
+                        for (let dy = minRange; dy <= maxRange; dy++) {
+                            for (let dx = minRange; dx <= maxRange; dx++) {
+                                const newY = y + dy;
+                                const newX = x + dx;
+                                if (newY >= 0 && newY < tempCanvas.height && newX >= 0 && newX < tempCanvas.width) {
+                                    const distanceSquared = dx*dx + dy*dy;
+                                    if (distanceSquared <= radiusSquared) {
+                                        const newIdx = (newY * tempCanvas.width + newX) * 4;
+                                        edgeData[newIdx] = 0;
+                                        edgeData[newIdx + 1] = 0;
+                                        edgeData[newIdx + 2] = 0;
+                                        edgeData[newIdx + 3] = 255;
+                                    }
+                                }
+                            }
+                        }
+                    } else {
+                        edgeData[idx] = 255;
+                        edgeData[idx + 1] = 255;
+                        edgeData[idx + 2] = 255;
+                        edgeData[idx + 3] = 255;
+                    }
+                }
+            }
+            
+            // 결과 이미지 생성
+            const resultImageData = new ImageData(edgeData, tempCanvas.width, tempCanvas.height);
+            tempCtx.putImageData(resultImageData, 0, 0);
+            
+            // 종이에 가이드 이미지 추가
+            if (includeGuide) {
+                const guideAspect = image.width / image.height;
+                let guideDrawWidth, guideDrawHeight, guideX, guideY;
+                
+                if (isLandscape) {
+                    guideDrawWidth = GUIDE_WIDTH * 0.8;
+                    guideDrawHeight = GUIDE_HEIGHT * 0.8;
+                    
+                    if (guideAspect > (guideDrawWidth / guideDrawHeight)) {
+                        guideDrawHeight = guideDrawWidth / guideAspect;
+                    } else {
+                        guideDrawWidth = guideDrawHeight * guideAspect;
+                    }
+                    
+                    guideX = (GUIDE_WIDTH - guideDrawWidth) / 2;
+                    guideY = margin;
+                } else {
+                    guideDrawWidth = GUIDE_WIDTH;
+                    guideDrawHeight = GUIDE_HEIGHT;
+                    
+                    if (guideAspect > 1) {
+                        guideDrawHeight = GUIDE_WIDTH / guideAspect;
+                    } else {
+                        guideDrawWidth = GUIDE_HEIGHT * guideAspect;
+                    }
+                    
+                    guideX = margin / 2;
+                    guideY = margin / 2;
+                }
+                
+                // 가이드 이미지 그리기
+                paperCtx.drawImage(image, guideX, guideY, guideDrawWidth, guideDrawHeight);
+                
+                // 가이드 이미지 테두리
+                paperCtx.strokeStyle = '#ddd';
+                paperCtx.lineWidth = 1;
+                paperCtx.strokeRect(guideX, guideY, guideDrawWidth, guideDrawHeight);
+                
+                // 가이드 라벨 추가
+                const fontSize = paperWidth < 400 ? 10 : 12;
+                paperCtx.fillStyle = '#666';
+                paperCtx.font = `${fontSize}px Arial`;
+                paperCtx.fillText('색칠 가이드', guideX + 5, guideY + guideDrawHeight + fontSize + 5);
+            }
+            
+            // 컬러링 이미지를 종이 캔버스에 추가
+            const coloringAspect = image.width / image.height;
+            let coloringDrawWidth = COLORING_WIDTH;
+            let coloringDrawHeight = COLORING_HEIGHT;
+            
+            if (coloringAspect > (COLORING_WIDTH / COLORING_HEIGHT)) {
+                coloringDrawHeight = COLORING_WIDTH / coloringAspect;
+            } else {
+                coloringDrawWidth = COLORING_HEIGHT * coloringAspect;
+            }
+            
+            // 중앙 정렬
+            const finalColoringX = coloringStartX + (COLORING_WIDTH - coloringDrawWidth) / 2;
+            const finalColoringY = coloringStartY + (COLORING_HEIGHT - coloringDrawHeight) / 2;
+            
+            paperCtx.drawImage(tempCanvas, finalColoringX, finalColoringY, coloringDrawWidth, coloringDrawHeight);
+            
+            return paperCanvas;
         }
 
         // 파일 업로드 처리
@@ -1114,7 +2216,15 @@
             const webImagesGrid = document.getElementById('webImagesGrid');
             const imageCount = document.getElementById('imageCount');
             
-            imageCount.textContent = `발견된 이미지: ${allWebImages.length}개`;
+            const standardImages = allWebImages.filter(img => img.type === 'standard').length;
+            const lazyImages = allWebImages.filter(img => img.type === 'lazy').length;
+            
+            let countText = `발견된 이미지: ${allWebImages.length}개`;
+            if (lazyImages > 0) {
+                countText += ` (일반: ${standardImages}개, 지연로딩: ${lazyImages}개)`;
+            }
+            
+            imageCount.textContent = countText;
             webImagesGrid.innerHTML = '';
             selectedWebImageIndex = -1;
 
@@ -1123,10 +2233,12 @@
                 imageItem.className = 'web-image-item';
                 imageItem.onclick = () => selectWebImage(index);
                 
+                const typeIcon = image.type === 'lazy' ? '🔄' : '📷';
+                
                 imageItem.innerHTML = `
                     <img src="${image.src}" alt="${image.alt}" class="web-image-preview" onerror="this.style.display='none'">
                     <div class="web-image-info">
-                        <div style="font-weight: bold;">${image.width} × ${image.height}</div>
+                        <div style="font-weight: bold;">${typeIcon} ${image.width} × ${image.height}</div>
                         <div style="font-size: 0.7rem; margin-top: 3px;">${image.alt}</div>
                     </div>
                 `;
@@ -1302,215 +2414,20 @@
                     const threshold = parseInt(webEdgeThreshold.value);
                     const thickness = parseFloat(webLineThickness.value);
                     
-                    // 선택된 종이 사이즈 가져오기
                     const selectedSize = paperSizes[webPaperSize.value];
                     const isLandscape = webOrientation.value === 'landscape';
                     
-                    // 방향에 따라 width/height 조정
                     const PAPER_WIDTH = isLandscape ? selectedSize.height : selectedSize.width;
                     const PAPER_HEIGHT = isLandscape ? selectedSize.width : selectedSize.height;
                     
                     const includeGuideOption = webIncludeGuide.checked;
                     
-                    // 가이드 이미지 크기
-                    let guideRatio = 0.25;
-                    if (PAPER_WIDTH < 400) guideRatio = 0.35;
+                    // 이미지 처리
+                    const processedCanvas = processImageToColoring(currentImage, threshold, thickness, PAPER_WIDTH, PAPER_HEIGHT, includeGuideOption, isLandscape);
                     
-                    let GUIDE_WIDTH, GUIDE_HEIGHT;
-                    if (isLandscape) {
-                        GUIDE_WIDTH = PAPER_WIDTH * guideRatio;
-                        GUIDE_HEIGHT = PAPER_HEIGHT * 0.8;
-                    } else {
-                        GUIDE_WIDTH = PAPER_WIDTH * guideRatio;
-                        GUIDE_HEIGHT = PAPER_HEIGHT * guideRatio;
-                    }
+                    finalCanvas = processedCanvas;
+                    webColoringImage.src = processedCanvas.toDataURL();
                     
-                    // 컬러링 영역 크기
-                    let COLORING_WIDTH, COLORING_HEIGHT, coloringStartX, coloringStartY;
-                    const margin = PAPER_WIDTH < 400 ? 10 : 20;
-                    const guideMargin = PAPER_WIDTH < 400 ? 20 : 30;
-                    
-                    if (includeGuideOption) {
-                        if (isLandscape) {
-                            COLORING_WIDTH = PAPER_WIDTH - GUIDE_WIDTH - guideMargin - margin;
-                            COLORING_HEIGHT = PAPER_HEIGHT - (margin * 2);
-                            coloringStartX = GUIDE_WIDTH + guideMargin;
-                            coloringStartY = margin;
-                        } else {
-                            COLORING_WIDTH = PAPER_WIDTH - margin;
-                            COLORING_HEIGHT = PAPER_HEIGHT - GUIDE_HEIGHT - guideMargin;
-                            coloringStartX = margin / 2;
-                            coloringStartY = GUIDE_HEIGHT + guideMargin;
-                        }
-                    } else {
-                        COLORING_WIDTH = PAPER_WIDTH - (margin * 2);
-                        COLORING_HEIGHT = PAPER_HEIGHT - (margin * 2);
-                        coloringStartX = margin;
-                        coloringStartY = margin;
-                    }
-                    
-                    // 종이 크기 캔버스 생성
-                    const paperCanvas = document.createElement('canvas');
-                    const paperCtx = paperCanvas.getContext('2d');
-                    paperCanvas.width = PAPER_WIDTH;
-                    paperCanvas.height = PAPER_HEIGHT;
-                    
-                    // 흰색 배경
-                    paperCtx.fillStyle = 'white';
-                    paperCtx.fillRect(0, 0, PAPER_WIDTH, PAPER_HEIGHT);
-                    
-                    // 컬러링 이미지 생성을 위한 임시 캔버스
-                    const tempCanvas = document.createElement('canvas');
-                    const tempCtx = tempCanvas.getContext('2d');
-                    tempCanvas.width = currentImage.width;
-                    tempCanvas.height = currentImage.height;
-                    
-                    // 원본 이미지 그리기
-                    tempCtx.drawImage(currentImage, 0, 0);
-                    
-                    // 이미지 데이터 가져오기
-                    const imageData = tempCtx.getImageData(0, 0, tempCanvas.width, tempCanvas.height);
-                    const data = imageData.data;
-                    
-                    // 그레이스케일 변환 및 엣지 검출
-                    const grayData = new Uint8ClampedArray(data.length);
-                    
-                    // 그레이스케일 변환
-                    for (let i = 0; i < data.length; i += 4) {
-                        const gray = data[i] * 0.299 + data[i + 1] * 0.587 + data[i + 2] * 0.114;
-                        grayData[i] = gray;
-                        grayData[i + 1] = gray;
-                        grayData[i + 2] = gray;
-                        grayData[i + 3] = 255;
-                    }
-                    
-                    // 엣지 검출
-                    const edgeData = new Uint8ClampedArray(data.length);
-                    
-                    for (let y = 1; y < tempCanvas.height - 1; y++) {
-                        for (let x = 1; x < tempCanvas.width - 1; x++) {
-                            const idx = (y * tempCanvas.width + x) * 4;
-                            
-                            // 주변 픽셀들의 밝기 값
-                            const tl = grayData[((y-1) * tempCanvas.width + (x-1)) * 4];
-                            const tm = grayData[((y-1) * tempCanvas.width + x) * 4];
-                            const tr = grayData[((y-1) * tempCanvas.width + (x+1)) * 4];
-                            const ml = grayData[(y * tempCanvas.width + (x-1)) * 4];
-                            const mr = grayData[(y * tempCanvas.width + (x+1)) * 4];
-                            const bl = grayData[((y+1) * tempCanvas.width + (x-1)) * 4];
-                            const bm = grayData[((y+1) * tempCanvas.width + x) * 4];
-                            const br = grayData[((y+1) * tempCanvas.width + (x+1)) * 4];
-                            
-                            // Sobel 연산자
-                            const gx = (tr + 2*mr + br) - (tl + 2*ml + bl);
-                            const gy = (bl + 2*bm + br) - (tl + 2*tm + tr);
-                            const magnitude = Math.sqrt(gx*gx + gy*gy);
-                            
-                            // 엣지인지 판단
-                            if (magnitude > threshold) {
-                                const effectiveThickness = Math.max(thickness, 0.5);
-                                const radiusSquared = effectiveThickness * effectiveThickness;
-                                
-                                const minRange = Math.floor(-effectiveThickness - 0.5);
-                                const maxRange = Math.ceil(effectiveThickness + 0.5);
-                                
-                                for (let dy = minRange; dy <= maxRange; dy++) {
-                                    for (let dx = minRange; dx <= maxRange; dx++) {
-                                        const newY = y + dy;
-                                        const newX = x + dx;
-                                        if (newY >= 0 && newY < tempCanvas.height && newX >= 0 && newX < tempCanvas.width) {
-                                            const distanceSquared = dx*dx + dy*dy;
-                                            if (distanceSquared <= radiusSquared) {
-                                                const newIdx = (newY * tempCanvas.width + newX) * 4;
-                                                edgeData[newIdx] = 0;
-                                                edgeData[newIdx + 1] = 0;
-                                                edgeData[newIdx + 2] = 0;
-                                                edgeData[newIdx + 3] = 255;
-                                            }
-                                        }
-                                    }
-                                }
-                            } else {
-                                edgeData[idx] = 255;
-                                edgeData[idx + 1] = 255;
-                                edgeData[idx + 2] = 255;
-                                edgeData[idx + 3] = 255;
-                            }
-                        }
-                    }
-                    
-                    // 결과 이미지 생성
-                    const resultImageData = new ImageData(edgeData, tempCanvas.width, tempCanvas.height);
-                    tempCtx.putImageData(resultImageData, 0, 0);
-                    
-                    // 종이에 가이드 이미지 추가
-                    if (includeGuideOption) {
-                        const guideAspect = currentImage.width / currentImage.height;
-                        let guideDrawWidth, guideDrawHeight, guideX, guideY;
-                        
-                        if (isLandscape) {
-                            guideDrawWidth = GUIDE_WIDTH * 0.8;
-                            guideDrawHeight = GUIDE_HEIGHT * 0.8;
-                            
-                            if (guideAspect > (guideDrawWidth / guideDrawHeight)) {
-                                guideDrawHeight = guideDrawWidth / guideAspect;
-                            } else {
-                                guideDrawWidth = guideDrawHeight * guideAspect;
-                            }
-                            
-                            guideX = (GUIDE_WIDTH - guideDrawWidth) / 2;
-                            guideY = margin;
-                        } else {
-                            guideDrawWidth = GUIDE_WIDTH;
-                            guideDrawHeight = GUIDE_HEIGHT;
-                            
-                            if (guideAspect > 1) {
-                                guideDrawHeight = GUIDE_WIDTH / guideAspect;
-                            } else {
-                                guideDrawWidth = GUIDE_HEIGHT * guideAspect;
-                            }
-                            
-                            guideX = margin / 2;
-                            guideY = margin / 2;
-                        }
-                        
-                        // 가이드 이미지 그리기
-                        paperCtx.drawImage(currentImage, guideX, guideY, guideDrawWidth, guideDrawHeight);
-                        
-                        // 가이드 이미지 테두리
-                        paperCtx.strokeStyle = '#ddd';
-                        paperCtx.lineWidth = 1;
-                        paperCtx.strokeRect(guideX, guideY, guideDrawWidth, guideDrawHeight);
-                        
-                        // 가이드 라벨 추가
-                        const fontSize = PAPER_WIDTH < 400 ? 10 : 12;
-                        paperCtx.fillStyle = '#666';
-                        paperCtx.font = `${fontSize}px Arial`;
-                        paperCtx.fillText('색칠 가이드', guideX + 5, guideY + guideDrawHeight + fontSize + 5);
-                    }
-                    
-                    // 컬러링 이미지를 종이 캔버스에 추가
-                    const coloringAspect = currentImage.width / currentImage.height;
-                    let coloringDrawWidth = COLORING_WIDTH;
-                    let coloringDrawHeight = COLORING_HEIGHT;
-                    
-                    if (coloringAspect > (COLORING_WIDTH / COLORING_HEIGHT)) {
-                        coloringDrawHeight = COLORING_WIDTH / coloringAspect;
-                    } else {
-                        coloringDrawWidth = COLORING_HEIGHT * coloringAspect;
-                    }
-                    
-                    // 중앙 정렬
-                    const finalColoringX = coloringStartX + (COLORING_WIDTH - coloringDrawWidth) / 2;
-                    const finalColoringY = coloringStartY + (COLORING_HEIGHT - coloringDrawHeight) / 2;
-                    
-                    paperCtx.drawImage(tempCanvas, finalColoringX, finalColoringY, coloringDrawWidth, coloringDrawHeight);
-                    
-                    // 최종 캔버스 저장
-                    finalCanvas = paperCanvas;
-                    webColoringImage.src = paperCanvas.toDataURL();
-                    
-                    // 제목 업데이트
                     const sizeName = selectedSize.name;
                     const orientationName = isLandscape ? '가로' : '세로';
                     webResultTitle.textContent = includeGuideOption ? 
@@ -1580,206 +2497,15 @@
                     const PAPER_HEIGHT = isLandscape ? selectedSize.width : selectedSize.height;
                     
                     const includeGuideOption = includeGuide.checked;
-                    
-                    // 가이드 이미지 크기
-                    let guideRatio = 0.25;
-                    if (PAPER_WIDTH < 400) guideRatio = 0.35;
-                    
-                    let GUIDE_WIDTH, GUIDE_HEIGHT;
-                    if (isLandscape) {
-                        GUIDE_WIDTH = PAPER_WIDTH * guideRatio;
-                        GUIDE_HEIGHT = PAPER_HEIGHT * 0.8;
-                    } else {
-                        GUIDE_WIDTH = PAPER_WIDTH * guideRatio;
-                        GUIDE_HEIGHT = PAPER_HEIGHT * guideRatio;
-                    }
-                    
-                    // 컬러링 영역 크기
-                    let COLORING_WIDTH, COLORING_HEIGHT, coloringStartX, coloringStartY;
-                    const margin = PAPER_WIDTH < 400 ? 10 : 20;
-                    const guideMargin = PAPER_WIDTH < 400 ? 20 : 30;
-                    
-                    if (includeGuideOption) {
-                        if (isLandscape) {
-                            COLORING_WIDTH = PAPER_WIDTH - GUIDE_WIDTH - guideMargin - margin;
-                            COLORING_HEIGHT = PAPER_HEIGHT - (margin * 2);
-                            coloringStartX = GUIDE_WIDTH + guideMargin;
-                            coloringStartY = margin;
-                        } else {
-                            COLORING_WIDTH = PAPER_WIDTH - margin;
-                            COLORING_HEIGHT = PAPER_HEIGHT - GUIDE_HEIGHT - guideMargin;
-                            coloringStartX = margin / 2;
-                            coloringStartY = GUIDE_HEIGHT + guideMargin;
-                        }
-                    } else {
-                        COLORING_WIDTH = PAPER_WIDTH - (margin * 2);
-                        COLORING_HEIGHT = PAPER_HEIGHT - (margin * 2);
-                        coloringStartX = margin;
-                        coloringStartY = margin;
-                    }
-                    
-                    // 종이 크기 캔버스 생성
-                    const paperCanvas = document.createElement('canvas');
-                    const paperCtx = paperCanvas.getContext('2d');
-                    paperCanvas.width = PAPER_WIDTH;
-                    paperCanvas.height = PAPER_HEIGHT;
-                    
-                    // 흰색 배경
-                    paperCtx.fillStyle = 'white';
-                    paperCtx.fillRect(0, 0, PAPER_WIDTH, PAPER_HEIGHT);
-                    
-                    // 컬러링 이미지 생성을 위한 임시 캔버스
-                    const tempCanvas = document.createElement('canvas');
-                    const tempCtx = tempCanvas.getContext('2d');
-                    tempCanvas.width = currentImage.width;
-                    tempCanvas.height = currentImage.height;
-                    
-                    // 원본 이미지 그리기
-                    tempCtx.drawImage(currentImage, 0, 0);
-                    
-                    // 이미지 데이터 가져오기
-                    const imageData = tempCtx.getImageData(0, 0, tempCanvas.width, tempCanvas.height);
-                    const data = imageData.data;
-                    
-                    // 그레이스케일 변환 및 엣지 검출
-                    const grayData = new Uint8ClampedArray(data.length);
-                    
-                    // 그레이스케일 변환
-                    for (let i = 0; i < data.length; i += 4) {
-                        const gray = data[i] * 0.299 + data[i + 1] * 0.587 + data[i + 2] * 0.114;
-                        grayData[i] = gray;
-                        grayData[i + 1] = gray;
-                        grayData[i + 2] = gray;
-                        grayData[i + 3] = 255;
-                    }
-                    
-                    // 엣지 검출
-                    const edgeData = new Uint8ClampedArray(data.length);
                     const threshold = parseInt(edgeThreshold.value);
                     const thickness = parseFloat(lineThickness.value);
                     
-                    for (let y = 1; y < tempCanvas.height - 1; y++) {
-                        for (let x = 1; x < tempCanvas.width - 1; x++) {
-                            const idx = (y * tempCanvas.width + x) * 4;
-                            
-                            // 주변 픽셀들의 밝기 값
-                            const tl = grayData[((y-1) * tempCanvas.width + (x-1)) * 4];
-                            const tm = grayData[((y-1) * tempCanvas.width + x) * 4];
-                            const tr = grayData[((y-1) * tempCanvas.width + (x+1)) * 4];
-                            const ml = grayData[(y * tempCanvas.width + (x-1)) * 4];
-                            const mr = grayData[(y * tempCanvas.width + (x+1)) * 4];
-                            const bl = grayData[((y+1) * tempCanvas.width + (x-1)) * 4];
-                            const bm = grayData[((y+1) * tempCanvas.width + x) * 4];
-                            const br = grayData[((y+1) * tempCanvas.width + (x+1)) * 4];
-                            
-                            // Sobel 연산자
-                            const gx = (tr + 2*mr + br) - (tl + 2*ml + bl);
-                            const gy = (bl + 2*bm + br) - (tl + 2*tm + tr);
-                            const magnitude = Math.sqrt(gx*gx + gy*gy);
-                            
-                            // 엣지인지 판단
-                            if (magnitude > threshold) {
-                                const effectiveThickness = Math.max(thickness, 0.5);
-                                const radiusSquared = effectiveThickness * effectiveThickness;
-                                
-                                const minRange = Math.floor(-effectiveThickness - 0.5);
-                                const maxRange = Math.ceil(effectiveThickness + 0.5);
-                                
-                                for (let dy = minRange; dy <= maxRange; dy++) {
-                                    for (let dx = minRange; dx <= maxRange; dx++) {
-                                        const newY = y + dy;
-                                        const newX = x + dx;
-                                        if (newY >= 0 && newY < tempCanvas.height && newX >= 0 && newX < tempCanvas.width) {
-                                            const distanceSquared = dx*dx + dy*dy;
-                                            if (distanceSquared <= radiusSquared) {
-                                                const newIdx = (newY * tempCanvas.width + newX) * 4;
-                                                edgeData[newIdx] = 0;
-                                                edgeData[newIdx + 1] = 0;
-                                                edgeData[newIdx + 2] = 0;
-                                                edgeData[newIdx + 3] = 255;
-                                            }
-                                        }
-                                    }
-                                }
-                            } else {
-                                edgeData[idx] = 255;
-                                edgeData[idx + 1] = 255;
-                                edgeData[idx + 2] = 255;
-                                edgeData[idx + 3] = 255;
-                            }
-                        }
-                    }
-                    
-                    // 결과 이미지 생성
-                    const resultImageData = new ImageData(edgeData, tempCanvas.width, tempCanvas.height);
-                    tempCtx.putImageData(resultImageData, 0, 0);
-                    
-                    // 종이에 가이드 이미지 추가
-                    if (includeGuideOption) {
-                        const guideAspect = currentImage.width / currentImage.height;
-                        let guideDrawWidth, guideDrawHeight, guideX, guideY;
-                        
-                        if (isLandscape) {
-                            guideDrawWidth = GUIDE_WIDTH * 0.8;
-                            guideDrawHeight = GUIDE_HEIGHT * 0.8;
-                            
-                            if (guideAspect > (guideDrawWidth / guideDrawHeight)) {
-                                guideDrawHeight = guideDrawWidth / guideAspect;
-                            } else {
-                                guideDrawWidth = guideDrawHeight * guideAspect;
-                            }
-                            
-                            guideX = (GUIDE_WIDTH - guideDrawWidth) / 2;
-                            guideY = margin;
-                        } else {
-                            guideDrawWidth = GUIDE_WIDTH;
-                            guideDrawHeight = GUIDE_HEIGHT;
-                            
-                            if (guideAspect > 1) {
-                                guideDrawHeight = GUIDE_WIDTH / guideAspect;
-                            } else {
-                                guideDrawWidth = GUIDE_HEIGHT * guideAspect;
-                            }
-                            
-                            guideX = margin / 2;
-                            guideY = margin / 2;
-                        }
-                        
-                        // 가이드 이미지 그리기
-                        paperCtx.drawImage(currentImage, guideX, guideY, guideDrawWidth, guideDrawHeight);
-                        
-                        // 가이드 이미지 테두리
-                        paperCtx.strokeStyle = '#ddd';
-                        paperCtx.lineWidth = 1;
-                        paperCtx.strokeRect(guideX, guideY, guideDrawWidth, guideDrawHeight);
-                        
-                        // 가이드 라벨 추가
-                        const fontSize = PAPER_WIDTH < 400 ? 10 : 12;
-                        paperCtx.fillStyle = '#666';
-                        paperCtx.font = `${fontSize}px Arial`;
-                        paperCtx.fillText('색칠 가이드', guideX + 5, guideY + guideDrawHeight + fontSize + 5);
-                    }
-                    
-                    // 컬러링 이미지를 종이 캔버스에 추가
-                    const coloringAspect = currentImage.width / currentImage.height;
-                    let coloringDrawWidth = COLORING_WIDTH;
-                    let coloringDrawHeight = COLORING_HEIGHT;
-                    
-                    if (coloringAspect > (COLORING_WIDTH / COLORING_HEIGHT)) {
-                        coloringDrawHeight = COLORING_WIDTH / coloringAspect;
-                    } else {
-                        coloringDrawWidth = COLORING_HEIGHT * coloringAspect;
-                    }
-                    
-                    // 중앙 정렬
-                    const finalColoringX = coloringStartX + (COLORING_WIDTH - coloringDrawWidth) / 2;
-                    const finalColoringY = coloringStartY + (COLORING_HEIGHT - coloringDrawHeight) / 2;
-                    
-                    paperCtx.drawImage(tempCanvas, finalColoringX, finalColoringY, coloringDrawWidth, coloringDrawHeight);
+                    // 이미지 처리
+                    const processedCanvas = processImageToColoring(currentImage, threshold, thickness, PAPER_WIDTH, PAPER_HEIGHT, includeGuideOption, isLandscape);
                     
                     // 최종 캔버스 저장
-                    finalCanvas = paperCanvas;
-                    coloringImage.src = paperCanvas.toDataURL();
+                    finalCanvas = processedCanvas;
+                    coloringImage.src = processedCanvas.toDataURL();
                     
                     // 제목 업데이트
                     const sizeName = selectedSize.name;
