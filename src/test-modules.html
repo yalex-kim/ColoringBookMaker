@@ -1,0 +1,53 @@
+<!DOCTYPE html>
+<html lang="ko">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>모듈 테스트</title>
+</head>
+<body>
+    <h1>모듈 임포트 테스트</h1>
+    <div id="status">테스트 중...</div>
+    
+    <script type="module">
+        console.log('모듈 스크립트 시작');
+        
+        try {
+            // 모듈들을 하나씩 테스트
+            import('./scripts/modules/ColoringBookProcessor.js')
+                .then(module => {
+                    console.log('✅ ColoringBookProcessor 로드 성공');
+                    document.getElementById('status').innerHTML += '<br>✅ ColoringBookProcessor OK';
+                    return import('./scripts/modules/GeminiAI.js');
+                })
+                .then(module => {
+                    console.log('✅ GeminiAI 로드 성공');
+                    document.getElementById('status').innerHTML += '<br>✅ GeminiAI OK';
+                    return import('./scripts/modules/ImageUploader.js');
+                })
+                .then(module => {
+                    console.log('✅ ImageUploader 로드 성공');
+                    document.getElementById('status').innerHTML += '<br>✅ ImageUploader OK';
+                    return import('./scripts/modules/WebImageLoader.js');
+                })
+                .then(module => {
+                    console.log('✅ WebImageLoader 로드 성공');
+                    document.getElementById('status').innerHTML += '<br>✅ WebImageLoader OK';
+                    return import('./scripts/modules/UIController.js');
+                })
+                .then(module => {
+                    console.log('✅ UIController 로드 성공');
+                    document.getElementById('status').innerHTML += '<br>✅ UIController OK';
+                    document.getElementById('status').innerHTML += '<br><br>🎉 모든 모듈 로드 성공!';
+                })
+                .catch(error => {
+                    console.error('❌ 모듈 로드 실패:', error);
+                    document.getElementById('status').innerHTML += '<br>❌ 오류: ' + error.message;
+                });
+        } catch (error) {
+            console.error('❌ 스크립트 오류:', error);
+            document.getElementById('status').innerHTML = '❌ 스크립트 오류: ' + error.message;
+        }
+    </script>
+</body>
+</html>

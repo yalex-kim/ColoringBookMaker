@@ -1,0 +1,1434 @@
+<!DOCTYPE html>
+<html lang="ko">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>컬러링북 메이커 - AI 이미지 생성 포함</title>
+    <link rel="stylesheet" href="./styles/main.css">
+</head>
+<body>
+    <div class="container">
+        <div class="header">
+            <h1>컬러링북 메이커</h1>
+            <p>사진을 업로드하거나 웹에서 수집하거나 Gemini AI로 최적화하여 컬러링북으로 변환해보세요!</p>
+        </div>
+
+        <!-- 모드 선택 탭 -->
+        <div class="mode-tabs">
+            <button class="mode-tab active" data-mode="upload">
+                📁 파일 업로드
+            </button>
+            <button class="mode-tab" data-mode="web">
+                🌐 웹 이미지 수집
+            </button>
+            <button class="mode-tab" data-mode="ai">
+                🤖 Gemini AI 생성
+            </button>
+        </div>
+
+        <!-- 파일 업로드 모드 -->
+        <div id="upload-mode" class="mode-content active">
+            <div class="upload-section">
+                <div class="upload-box" id="uploadBox">
+                    <div class="upload-icon">📁</div>
+                    <h3>이미지 파일 업로드</h3>
+                    <p>클릭하거나 파일을 드래그해서 업로드하세요</p>
+                    <p class="file-info">지원 형식: JPG, PNG, GIF, WEBP</p>
+                    <input type="file" id="fileInput" accept="image/*" hidden>
+                </div>
+            </div>
+        </div>
+
+        <!-- 웹 이미지 수집 모드 -->
+        <div id="web-mode" class="mode-content">
+            <div class="web-section">
+                <div class="input-group">
+                    <input type="url" id="imageUrl" placeholder="이미지 URL을 입력하세요...">
+                    <button id="loadImageBtn" class="primary-btn">이미지 로드</button>
+                </div>
+                <div class="url-info">
+                    <p>💡 <strong>사용 팁:</strong></p>
+                    <ul>
+                        <li>직접 이미지 링크를 입력해주세요 (jpg, png, gif, webp)</li>
+                        <li>이미지 로드에 실패하면 <strong>파일 업로드 모드</strong>를 이용해주세요.</li>
+                    </ul>
+                    
+                    <div style="margin-top: 20px;">
+                        <p style="font-weight: bold; margin-bottom: 10px;">🔗 예시 이미지 URL:</p>
+                        <div class="example-urls">
+                            <span class="example-url" onclick="setExampleUrl('https://pokemonkorea.co.kr/pokedex')">Pokemon Korea</span>
+                            <span class="example-url" onclick="setExampleUrl('https://picsum.photos')">Picsum Photos</span>
+                            <span class="example-url" onclick="setExampleUrl('https://unsplash.com')">Unsplash</span>
+                            <span class="example-url" onclick="setExampleUrl('https://pixabay.com')">Pixabay</span>
+                            <span class="example-url" onclick="setExampleUrl('https://pexels.com')">Pexels</span>
+                        </div>
+                        
+                        <p style="font-size: 0.9em; color: #888; margin-top: 10px;">
+                            ⚠️ 일부 사이트는 CORS 정책으로 인해 로드되지 않을 수 있습니다.
+                        </p>
+                    </div>
+                </div>
+
+                <!-- 웹 이미지 작업 공간 (갤러리 + 미리보기) -->
+                <div id="webWorkspace" class="web-workspace" style="display: none;">
+                    <div class="workspace-container">
+                        <!-- 왼쪽: 이미지 갤러리 (1/3) -->
+                        <div class="gallery-panel">
+                            <div class="gallery-header">
+                                <h3>🖼️ 발견된 이미지들</h3>
+                                <p id="imageCount" style="color: #888; font-size: 0.9em; margin-bottom: 8px;">로딩 중...</p>
+                                <p style="color: #666; margin: 0; font-size: 0.9em;">원하는 이미지를 클릭하여 선택하세요</p>
+                            </div>
+                            <div class="gallery-scrollable">
+                                <div id="imageGrid" class="image-grid-compact"></div>
+                                <div id="galleryLoading" class="gallery-loading" style="display: none;">
+                                    <div class="spinner"></div>
+                                    <p>이미지를 검색하는 중...</p>
+                                </div>
+                            </div>
+                        </div>
+
+                        <!-- 오른쪽: 선택된 이미지 미리보기 및 변환 (2/3) -->
+                        <div class="preview-panel">
+                            <!-- 로딩 상태 표시 -->
+                            <div id="imageLoadingStatus" class="loading-status" style="display: none;">
+                                <div class="loading-content">
+                                    <div class="spinner-small"></div>
+                                    <h3>🔄 이미지 로딩 중...</h3>
+                                    <p>이미지를 불러오는 중입니다. 잠시만 기다려주세요.</p>
+                                </div>
+                            </div>
+
+                            <div id="selectedImagePreview" class="selected-preview" style="display: none;">
+                                <h3>📷 선택된 이미지</h3>
+                                <div class="image-display">
+                                    <img id="selectedImage" alt="선택된 이미지">
+                                </div>
+                            </div>
+
+                            <!-- 웹 이미지 설정 옵션 -->
+                            <div id="webControlsSection" class="web-controls-section" style="display: none;">
+                                <h3>⚙️ 변환 설정</h3>
+                                <div class="controls-grid-compact">
+                                    <div class="control-group">
+                                        <label for="webThreshold">윤곽선 민감도:</label>
+                                        <div class="slider-group">
+                                            <input type="range" id="webThreshold" min="50" max="200" value="128">
+                                            <span id="webThresholdValue">128</span>
+                                        </div>
+                                    </div>
+                                    
+                                    <div class="control-group">
+                                        <label for="webLineWidth">선 굵기:</label>
+                                        <div class="slider-group">
+                                            <input type="range" id="webLineWidth" min="1" max="5" value="1">
+                                            <span id="webLineWidthValue">1</span>
+                                        </div>
+                                    </div>
+                                    
+                                    <div class="control-group">
+                                        <label for="webPaperSize">📄 종이 사이즈:</label>
+                                        <select id="webPaperSize">
+                                            <option value="a4">A4 (210×297mm)</option>
+                                            <option value="a5">A5 (148×210mm)</option>
+                                            <option value="b4">B4 (250×353mm)</option>
+                                            <option value="b5">B5 (176×250mm)</option>
+                                            <option value="5x7">5×7 인화용 (5×7")</option>
+                                            <option value="4x6">4×6 인화용 (4×6")</option>
+                                        </select>
+                                    </div>
+                                    
+                                    <div class="control-group">
+                                        <label for="webOrientation">🔄 방향:</label>
+                                        <select id="webOrientation">
+                                            <option value="portrait">세로 (Portrait)</option>
+                                            <option value="landscape">가로 (Landscape)</option>
+                                        </select>
+                                    </div>
+                                    
+                                    <div class="control-group">
+                                        <div class="checkbox-group">
+                                            <input type="checkbox" id="webIncludeGuide" checked>
+                                            <label for="webIncludeGuide">🌈 색칠 가이드 포함</label>
+                                        </div>
+                                    </div>
+                                </div>
+                                
+                                <div class="web-action-buttons">
+                                    <button id="webProcessBtn" class="primary-btn">🎨 컬러링북 변환</button>
+                                </div>
+                            </div>
+                            
+                            <div id="convertedImageResult" class="converted-result" style="display: none;">
+                                <h3>🎨 변환된 컬러링북</h3>
+                                <div class="image-display">
+                                    <canvas id="convertedCanvas"></canvas>
+                                </div>
+                                <div class="result-actions">
+                                    <button id="downloadBtn" class="primary-btn">📥 다운로드</button>
+                                </div>
+                            </div>
+                        </div>
+                    </div>
+                </div>
+            </div>
+        </div>
+
+        <!-- AI 이미지 생성 모드 -->
+        <div id="ai-mode" class="mode-content">
+            <div class="ai-section">
+                <div class="prompt-section">
+                    <h3>🤖 AI 이미지 생성</h3>
+                    <div class="features-info">
+                        <p><strong>🤖 Gemini AI 강화 기능:</strong></p>
+                        <ul>
+                            <li><strong>스마트 프롬프트 개선:</strong> 단어 몇 개만 입력해도 자동으로 최적화된 프롬프트로 변환</li>
+                            <li><strong>컬러링북 특화:</strong> 컬러링북에 적합한 선명한 윤곽선과 단순한 구조로 생성</li>
+                            <li><strong>다양한 스타일:</strong> 동물, 식물, 건물, 캐릭터 등 다양한 주제 지원</li>
+                        </ul>
+                    </div>
+                    
+                    <div class="input-group">
+                        <textarea id="promptInput" placeholder="어떤 이미지를 생성하고 싶나요? (예: 귀여운 고양이, 성, 꽃)" rows="3"></textarea>
+                        <div class="prompt-controls">
+                            <button id="improvePromptBtn" class="secondary-btn">프롬프트 개선</button>
+                            <button id="generateBtn" class="primary-btn">이미지 생성</button>
+                        </div>
+                    </div>
+                    
+                    <div class="example-prompts">
+                        <p><strong>예시 프롬프트:</strong></p>
+                        <div class="prompt-examples">
+                            <span class="example-prompt" data-prompt="귀여운 강아지">귀여운 강아지</span>
+                            <span class="example-prompt" data-prompt="마법의 성">마법의 성</span>
+                            <span class="example-prompt" data-prompt="예쁜 꽃">예쁜 꽃</span>
+                            <span class="example-prompt" data-prompt="우주 로켓">우주 로켓</span>
+                        </div>
+                    </div>
+                </div>
+
+                <!-- AI 이미지 결과 -->
+                <div id="aiResults" class="ai-results" style="display: none;">
+                    <h3>생성된 이미지</h3>
+                    <div class="generated-images" id="generatedImages"></div>
+                </div>
+            </div>
+        </div>
+
+        <!-- 이미지 미리보기 영역 -->
+        <div id="previewSection" class="preview-section" style="display: none;">
+            <h3>원본 이미지</h3>
+            <div class="image-container">
+                <img id="previewImage" alt="미리보기">
+            </div>
+        </div>
+
+        <!-- 컨트롤 영역 -->
+        <div id="controlsSection" class="controls-section" style="display: none;">
+            <div class="controls-grid">
+                <div class="control-group">
+                    <label for="threshold">윤곽선 민감도:</label>
+                    <div class="slider-group">
+                        <input type="range" id="threshold" min="50" max="200" value="128">
+                        <span id="thresholdValue">128</span>
+                    </div>
+                </div>
+                
+                <div class="control-group">
+                    <label for="lineWidth">선 굵기:</label>
+                    <div class="slider-group">
+                        <input type="range" id="lineWidth" min="1" max="5" value="1">
+                        <span id="lineWidthValue">1</span>
+                    </div>
+                </div>
+                
+                <div class="control-group">
+                    <label for="paperSize">📄 종이 사이즈:</label>
+                    <select id="paperSize">
+                        <option value="a4">A4 (210×297mm)</option>
+                        <option value="a5">A5 (148×210mm)</option>
+                        <option value="b4">B4 (250×353mm)</option>
+                        <option value="b5">B5 (176×250mm)</option>
+                        <option value="5x7">5×7 인화용 (5×7")</option>
+                        <option value="4x6">4×6 인화용 (4×6")</option>
+                    </select>
+                </div>
+                
+                <div class="control-group">
+                    <label for="orientation">🔄 방향:</label>
+                    <select id="orientation">
+                        <option value="portrait">세로 (Portrait)</option>
+                        <option value="landscape">가로 (Landscape)</option>
+                    </select>
+                </div>
+                
+                <div class="control-group">
+                    <div class="checkbox-group">
+                        <input type="checkbox" id="includeGuide" checked>
+                        <label for="includeGuide">🌈 색칠 가이드 포함</label>
+                    </div>
+                </div>
+            </div>
+            
+            <div class="action-buttons">
+                <button id="processBtn" class="primary-btn">컬러링북 변환</button>
+                <button id="resetBtn" class="secondary-btn">초기화</button>
+            </div>
+        </div>
+
+        <!-- 결과 영역 -->
+        <div id="resultSection" class="result-section" style="display: none;">
+            <h3>컬러링북 결과</h3>
+            <div class="image-container">
+                <canvas id="resultCanvas"></canvas>
+            </div>
+            <button id="downloadBtn" class="primary-btn">다운로드</button>
+        </div>
+
+        <!-- 로딩 표시 -->
+        <div id="loadingOverlay" class="loading-overlay" style="display: none;">
+            <div class="loading-spinner">
+                <div class="spinner"></div>
+                <p id="loadingText">처리 중...</p>
+            </div>
+        </div>
+    </div>
+
+    <script>
+        // 종이 사이즈 정의 (72DPI 기준)
+        const paperSizes = {
+            a4: { width: 595, height: 842, name: 'A4' },
+            a5: { width: 420, height: 595, name: 'A5' },
+            b4: { width: 708, height: 1001, name: 'B4' },
+            b5: { width: 499, height: 708, name: 'B5' },
+            '5x7': { width: 360, height: 504, name: '5×7' },
+            '4x6': { width: 288, height: 432, name: '4×6' }
+        };
+
+        let currentImage = null;
+
+        document.addEventListener('DOMContentLoaded', function() {
+            initApp();
+        });
+
+        function initApp() {
+            setupEventListeners();
+            setupSliders();
+            console.log('앱 초기화 완료');
+        }
+
+        function setupEventListeners() {
+            // 모드 탭 전환
+            document.querySelectorAll('.mode-tab').forEach(tab => {
+                tab.addEventListener('click', function() {
+                    switchMode(this.dataset.mode);
+                });
+            });
+
+            // 파일 업로드
+            document.getElementById('uploadBox').addEventListener('click', () => {
+                document.getElementById('fileInput').click();
+            });
+
+            document.getElementById('fileInput').addEventListener('change', function(e) {
+                const file = e.target.files[0];
+                if (file) handleFile(file);
+            });
+
+            // 웹 이미지 로드
+            document.getElementById('loadImageBtn').addEventListener('click', loadWebImage);
+            
+            // Enter 키로 웹 이미지 로드
+            document.getElementById('imageUrl').addEventListener('keypress', function(e) {
+                if (e.key === 'Enter') {
+                    loadWebImage();
+                }
+            });
+
+            // 버튼 이벤트
+            document.getElementById('processBtn').addEventListener('click', processImage);
+            document.getElementById('resetBtn').addEventListener('click', resetApp);
+            document.getElementById('downloadBtn').addEventListener('click', downloadResult);
+            
+            // 웹 컨트롤 이벤트
+            const webProcessBtn = document.getElementById('webProcessBtn');
+            if (webProcessBtn) {
+                webProcessBtn.addEventListener('click', processWebImage);
+            }
+        }
+
+        function switchMode(mode) {
+            // 탭 활성화
+            document.querySelectorAll('.mode-tab').forEach(tab => {
+                tab.classList.remove('active');
+            });
+            document.querySelector(`[data-mode="${mode}"]`).classList.add('active');
+
+            // 컨텐츠 전환
+            document.querySelectorAll('.mode-content').forEach(content => {
+                content.classList.remove('active');
+            });
+            document.getElementById(`${mode}-mode`).classList.add('active');
+
+            console.log(`모드 전환: ${mode}`);
+        }
+
+        function setExampleUrl(url) {
+            document.getElementById('imageUrl').value = url;
+            console.log('예시 URL 설정:', url);
+        }
+
+        function loadWebImage() {
+            const url = document.getElementById('imageUrl').value.trim();
+            if (!url) {
+                alert('URL을 입력해주세요.');
+                return;
+            }
+
+            console.log('웹 페이지 로드 시작:', url);
+
+            // URL이 이미지 파일인지 확인
+            if (isImageUrl(url)) {
+                loadDirectImage(url);
+            } else {
+                scrapeWebPage(url);
+            }
+        }
+
+        function isImageUrl(url) {
+            const imageExtensions = ['.jpg', '.jpeg', '.png', '.gif', '.webp', '.bmp', '.svg'];
+            const lowercaseUrl = url.toLowerCase();
+            return imageExtensions.some(ext => 
+                lowercaseUrl.includes(ext) && 
+                (lowercaseUrl.endsWith(ext) || lowercaseUrl.includes(ext + '?'))
+            );
+        }
+
+        function loadDirectImage(url) {
+            const img = new Image();
+            img.crossOrigin = 'anonymous';
+            
+            img.onload = function() {
+                currentImage = img;
+                showPreview(img);
+                showControls();
+                console.log('직접 이미지 로드 완료');
+            };
+            
+            img.onerror = function() {
+                alert('이미지 로드에 실패했습니다. URL을 확인해주세요.');
+                console.error('직접 이미지 로드 실패:', url);
+            };
+            
+            img.src = url;
+        }
+
+        async function scrapeWebPage(url) {
+            const galleryLoading = document.getElementById('galleryLoading');
+            const imageGrid = document.getElementById('imageGrid');
+
+            // 워크스페이스 표시 및 로딩 표시
+            showWebWorkspace();
+            if (galleryLoading) {
+                galleryLoading.style.display = 'block';
+            }
+            imageGrid.innerHTML = '';
+
+            // 특정 사이트의 경우 직접 이미지 URL 제공
+            if (url.includes('pokemonkorea.co.kr')) {
+                showPokemonImages();
+                return;
+            }
+
+            try {
+                // 기존 사이트와 동일한 방식 사용
+                const proxyUrl = 'https://api.allorigins.win/get?url=';
+                console.log('웹페이지 로드 시작:', proxyUrl + url);
+                const response = await fetch(proxyUrl + encodeURIComponent(url));
+                
+                if (!response.ok) {
+                    throw new Error('웹사이트에 접근할 수 없습니다.');
+                }
+
+                const data = await response.json();
+                const htmlContent = data.contents;
+                
+                // HTML 파싱하여 이미지 찾기 (기존 사이트 방식)
+                const parser = new DOMParser();
+                const doc = parser.parseFromString(htmlContent, 'text/html');
+                const imgElements = doc.querySelectorAll('img');
+                
+                const images = [];
+                const baseUrlObj = new URL(url);
+                const baseUrl = baseUrlObj.origin;
+                
+                for (let img of imgElements) {
+                    let src = img.src || img.getAttribute('data-src') || img.getAttribute('data-lazy') || img.getAttribute('data-srcset');
+                    
+                    if (src) {
+                        // data-srcset 처리 (첫 번째 URL만 사용)
+                        if (src.includes(' ')) {
+                            src = src.split(' ')[0];
+                        }
+                        
+                        // 상대 경로를 절대 경로로 변환
+                        if (src.startsWith('//')) {
+                            src = 'https:' + src;
+                        } else if (src.startsWith('/')) {
+                            src = baseUrl + src;
+                        } else if (!src.startsWith('http')) {
+                            src = baseUrl + '/' + src;
+                        }
+                        
+                        // 이미지 파일인지 확인하고 중복 제거 (50개 제한)
+                        if (isValidImageSrc(src) && !images.some(item => item.url === src) && images.length < 50) {
+                            images.push({
+                                url: src,
+                                alt: img.alt || img.title || `이미지 ${images.length + 1}`
+                            });
+                        }
+                    }
+                }
+                
+                if (galleryLoading) {
+                    if (galleryLoading) {
+                galleryLoading.style.display = 'none';
+            }
+                }
+
+                if (images.length === 0) {
+                    imageGrid.innerHTML = '<p style="text-align: center; color: #666; padding: 20px;">이미지를 찾을 수 없습니다.</p>';
+                    return;
+                }
+
+                // 워크스페이스 표시 및 이미지 갤러리 로드
+                showWebWorkspace();
+                displayImageGallery(images); // 50개로 제한됨
+                console.log(`${images.length}개의 이미지를 발견했습니다.`);
+
+            } catch (error) {
+                if (galleryLoading) {
+                    if (galleryLoading) {
+                galleryLoading.style.display = 'none';
+            }
+                }
+                imageGrid.innerHTML = `
+                    <div style="text-align: center; color: #f44336; padding: 20px;">
+                        <h4>❌ 페이지 로드 실패</h4>
+                        <p>웹사이트에 접근할 수 없습니다: ${error.message}</p>
+                        <br>
+                        <p><strong>대안:</strong></p>
+                        <button onclick="showSampleImages()" class="primary-btn" style="margin-top: 10px;">
+                            📷 샘플 이미지 보기
+                        </button>
+                    </div>
+                `;
+                console.error('웹 스크래핑 실패:', error);
+            }
+        }
+
+        function isValidImageSrc(src) {
+            if (!src || src.length < 10) return false;
+            
+            const imageExtensions = ['.jpg', '.jpeg', '.png', '.gif', '.webp', '.bmp'];
+            const lowercaseSrc = src.toLowerCase();
+            
+            // 이미지 확장자 확인
+            const hasImageExt = imageExtensions.some(ext => 
+                lowercaseSrc.includes(ext) && 
+                (lowercaseSrc.endsWith(ext) || lowercaseSrc.includes(ext + '?'))
+            );
+            
+            // 작은 아이콘이나 로고 제외
+            const isSmallIcon = lowercaseSrc.includes('icon') || 
+                               lowercaseSrc.includes('logo') || 
+                               lowercaseSrc.includes('favicon') ||
+                               lowercaseSrc.includes('thumb') ||
+                               src.includes('1x1') ||
+                               src.includes('16x16') ||
+                               src.includes('32x32');
+            
+            return hasImageExt && !isSmallIcon;
+        }
+
+        function showPokemonImages() {
+            const galleryLoading = document.getElementById('galleryLoading');
+            const imageGrid = document.getElementById('imageGrid');
+            
+            if (galleryLoading) {
+                galleryLoading.style.display = 'none';
+            }
+
+            // 포켓몬 1~151 (1세대 전체) 및 인기 포켓몬들
+            const pokemonData = [
+                // 1세대 스타터 진화라인
+                { num: '001', name: '이상해씨' }, { num: '002', name: '이상해풀' }, { num: '003', name: '이상해꽃' },
+                { num: '004', name: '파이리' }, { num: '005', name: '리자드' }, { num: '006', name: '리자몽' },
+                { num: '007', name: '꼬부기' }, { num: '008', name: '어니부기' }, { num: '009', name: '거북왕' },
+                
+                // 인기 포켓몬들
+                { num: '025', name: '피카츄' }, { num: '026', name: '라이츄' },
+                { num: '039', name: '푸린' }, { num: '040', name: '푸크린' },
+                { num: '052', name: '나옹이' }, { num: '053', name: '페르시온' },
+                { num: '054', name: '고라파덕' }, { num: '055', name: '골덕' },
+                { num: '104', name: '텅구리' }, { num: '105', name: '텅구리' },
+                { num: '131', name: '라프라스' }, { num: '143', name: '잠만보' },
+                
+                // 전설의 포켓몬
+                { num: '144', name: '프리져' }, { num: '145', name: '썬더' }, { num: '146', name: '파이어' },
+                { num: '150', name: '뮤츠' }, { num: '151', name: '뮤' },
+                
+                // 기타 인기 포켓몬들
+                { num: '016', name: '구구' }, { num: '017', name: '피죤' }, { num: '018', name: '피죤투' },
+                { num: '019', name: '꼬렛' }, { num: '020', name: '레트라' },
+                { num: '035', name: '픽시' }, { num: '036', name: '픽시' },
+                { num: '037', name: '식스테일' }, { num: '038', name: '나인테일' },
+                { num: '058', name: '가디' }, { num: '059', name: '윈디' },
+                { num: '063', name: '캐이시' }, { num: '064', name: '윤겔라' }, { num: '065', name: '후딘' },
+                { num: '066', name: '알통몬' }, { num: '067', name: '근육몬' }, { num: '068', name: '괴력몬' },
+                { num: '074', name: '꼬마돌' }, { num: '075', name: '데구리' }, { num: '076', name: '딱구리' },
+                { num: '077', name: '포니타' }, { num: '078', name: '날쌩마' },
+                { num: '083', name: '파오리' }, { num: '084', name: '두두' }, { num: '085', name: '두트리오' },
+                { num: '090', name: '셀러' }, { num: '091', name: '파르셀' },
+                { num: '092', name: '고오스' }, { num: '093', name: '고우스트' }, { num: '094', name: '팬텀' },
+                { num: '095', name: '롱스톤' }, { num: '096', name: '슬리프' }, { num: '097', name: '슬리퍼' },
+                { num: '098', name: '크랩' }, { num: '099', name: '킹크랩' },
+                { num: '100', name: '찌리리공' }, { num: '101', name: '붐볼' },
+                { num: '102', name: '아라리' }, { num: '103', name: '나시' },
+                { num: '106', name: '시라소몬' }, { num: '107', name: '홍수몬' },
+                { num: '108', name: '내룸벨트' }, { num: '109', name: '또가스' }, { num: '110', name: '또도가스' },
+                { num: '111', name: '뿔카노' }, { num: '112', name: '코뿌리' },
+                { num: '113', name: '럭키' }, { num: '114', name: '덩쿠리' },
+                { num: '115', name: '캥카' }, { num: '116', name: '쏘드라' }, { num: '117', name: '시드라' },
+                { num: '118', name: '콘치' }, { num: '119', name: '왕콘치' },
+                { num: '120', name: '별가사리' }, { num: '121', name: '아쿠스타' },
+                { num: '122', name: '마임맨' }, { num: '123', name: '스라크' },
+                { num: '124', name: '루주라' }, { num: '125', name: '에레키드' }, { num: '126', name: '마그마' },
+                { num: '127', name: '쁘사이저' }, { num: '128', name: '켄타로스' },
+                { num: '129', name: '잉어킹' }, { num: '130', name: '갸라도스' },
+                { num: '132', name: '메타몽' }, { num: '133', name: '이브이' },
+                { num: '134', name: '샤미드' }, { num: '135', name: '쥬피썬더' }, { num: '136', name: '부스터' },
+                { num: '137', name: '폴리곤' }, { num: '138', name: '암나이트' }, { num: '139', name: '암스타' },
+                { num: '140', name: '투구' }, { num: '141', name: '투구푸스' },
+                { num: '142', name: '프테라' }, { num: '147', name: '미뇨' }, { num: '148', name: '신뇨' }, { num: '149', name: '망나뇽' }
+            ];
+
+            const images = pokemonData.slice(0, 50).map(pokemon => ({
+                url: `https://raw.githubusercontent.com/PokeAPI/sprites/master/sprites/pokemon/other/official-artwork/${parseInt(pokemon.num)}.png`,
+                alt: pokemon.name
+            }));
+
+            displayImageGallery(images);
+            console.log(`${images.length}개의 포켓몬 이미지 표시`);
+        }
+
+        function showSampleImages() {
+            const galleryLoading = document.getElementById('galleryLoading');
+            const imageGrid = document.getElementById('imageGrid');
+            
+            if (galleryLoading) {
+                galleryLoading.style.display = 'none';
+            }
+
+            // 다양한 샘플 이미지들
+            const sampleImages = [
+                { url: 'https://picsum.photos/300/400?random=1', alt: '풍경 1' },
+                { url: 'https://picsum.photos/400/300?random=2', alt: '풍경 2' },
+                { url: 'https://picsum.photos/350/350?random=3', alt: '자연 1' },
+                { url: 'https://picsum.photos/300/500?random=4', alt: '자연 2' },
+                { url: 'https://picsum.photos/400/400?random=5', alt: '도시 1' },
+                { url: 'https://picsum.photos/350/450?random=6', alt: '도시 2' },
+                { url: 'https://picsum.photos/320/380?random=7', alt: '추상 1' },
+                { url: 'https://picsum.photos/380/320?random=8', alt: '추상 2' }
+            ];
+
+            showWebWorkspace();
+            displayImageGallery(sampleImages);
+            console.log('샘플 이미지 표시');
+        }
+
+        function showWebWorkspace() {
+            const webWorkspace = document.getElementById('webWorkspace');
+            if (webWorkspace) {
+                webWorkspace.style.display = 'block';
+            } else {
+                console.error('webWorkspace 요소를 찾을 수 없습니다');
+            }
+        }
+
+        function extractImagesFromHtml(html, baseUrl) {
+            // 간단한 정규식으로 이미지 URL 추출
+            const imgRegex = /<img[^>]+src=["']([^"']+)["'][^>]*>/gi;
+            const images = [];
+            let match;
+
+            while ((match = imgRegex.exec(html)) !== null) {
+                let imgUrl = match[1];
+                
+                // 상대 URL을 절대 URL로 변환
+                if (imgUrl.startsWith('//')) {
+                    imgUrl = 'https:' + imgUrl;
+                } else if (imgUrl.startsWith('/')) {
+                    const baseUrlObj = new URL(baseUrl);
+                    imgUrl = baseUrlObj.origin + imgUrl;
+                } else if (!imgUrl.startsWith('http')) {
+                    const baseUrlObj = new URL(baseUrl);
+                    imgUrl = new URL(imgUrl, baseUrlObj.href).href;
+                }
+
+                // 이미지 파일인지 확인하고 중복 제거
+                if (isImageUrl(imgUrl) && !images.some(img => img.url === imgUrl)) {
+                    images.push({
+                        url: imgUrl,
+                        alt: match[0].match(/alt=["']([^"']*)["']/)?.[1] || 'Image'
+                    });
+                }
+            }
+
+            return images.slice(0, 20); // 최대 20개만 표시
+        }
+
+        function displayImageGallery(images) {
+            const imageGrid = document.getElementById('imageGrid');
+            if (!imageGrid) {
+                console.error('imageGrid 요소를 찾을 수 없습니다');
+                return;
+            }
+            imageGrid.innerHTML = '';
+
+            // 최대 50개로 제한
+            const limitedImages = images.slice(0, 50);
+            console.log(`표시할 이미지 수: ${limitedImages.length}개 (원본: ${images.length}개)`);
+
+            // 이미지 개수 표시 업데이트
+            const imageCount = document.getElementById('imageCount');
+            if (imageCount) {
+                if (images.length > 50) {
+                    imageCount.textContent = `${limitedImages.length}개 표시 (총 ${images.length}개 중)`;
+                } else {
+                    imageCount.textContent = `총 ${limitedImages.length}개 이미지`;
+                }
+            }
+
+            limitedImages.forEach((imageInfo, index) => {
+                const imageDiv = document.createElement('div');
+                imageDiv.className = 'gallery-image';
+                
+                const img = document.createElement('img');
+                img.src = imageInfo.url;
+                img.alt = imageInfo.alt;
+                img.loading = 'lazy';
+                
+                const infoDiv = document.createElement('div');
+                infoDiv.className = 'image-info';
+                infoDiv.textContent = `${index + 1}`;
+
+                img.onload = function() {
+                    console.log(`이미지 ${index + 1} 로드 완료`);
+                };
+
+                img.onerror = function() {
+                    imageDiv.style.display = 'none';
+                };
+
+                imageDiv.addEventListener('click', () => {
+                    selectGalleryImage(imageInfo.url);
+                });
+
+                imageDiv.appendChild(img);
+                imageDiv.appendChild(infoDiv);
+                imageGrid.appendChild(imageDiv);
+            });
+        }
+
+        async function selectGalleryImage(imageUrl) {
+            console.log('갤러리 이미지 선택:', imageUrl);
+            
+            // 로딩 상태 표시
+            showImageLoadingStatus();
+            hideImagePreview();
+            hideConvertedResult();
+            
+            // 다양한 프록시 서비스들 시도
+            const proxyServices = [
+                'https://cors-anywhere.herokuapp.com/',
+                'https://api.allorigins.win/raw?url=',
+                'https://thingproxy.freeboard.io/fetch/',
+                'https://cors.eu.org/',
+                'https://api.codetabs.com/v1/proxy?quest='
+            ];
+            
+            let proxyIndex = 0;
+            
+            function tryNextProxy() {
+                if (proxyIndex < proxyServices.length) {
+                    const proxyUrl = proxyServices[proxyIndex];
+                    const proxiedImageUrl = proxyUrl + encodeURIComponent(imageUrl);
+                    
+                    console.log(`프록시 ${proxyIndex + 1} 시도:`, proxyUrl);
+                    
+                    const img = new Image();
+                    img.crossOrigin = 'anonymous';
+                    
+                    // 타임아웃 설정 (10초)
+                    const timeout = setTimeout(() => {
+                        console.log(`프록시 ${proxyIndex + 1} 타임아웃`);
+                        proxyIndex++;
+                        tryNextProxy();
+                    }, 10000);
+                    
+                    img.onload = function() {
+                        clearTimeout(timeout);
+                        console.log('이미지 로드 성공 (프록시)');
+                        currentImage = img;
+                        hideImageLoadingStatus();
+                        showSelectedImage(img);
+                        showControls();
+                    };
+                    
+                    img.onerror = function() {
+                        clearTimeout(timeout);
+                        console.log(`프록시 ${proxyIndex + 1} 실패, 다음 시도`);
+                        proxyIndex++;
+                        tryNextProxy();
+                    };
+                    
+                    img.src = proxiedImageUrl;
+                } else {
+                    // 모든 프록시 실패 시 직접 로드 시도
+                    console.log('모든 프록시 실패, 직접 로드 시도');
+                    tryDirectImageLoad(imageUrl);
+                }
+            }
+            
+            tryNextProxy();
+        }
+
+        function tryDirectImageLoad(imageUrl) {
+            console.log('직접 이미지 로드 시도:', imageUrl);
+            const img = new Image();
+            img.crossOrigin = 'anonymous';
+            
+            // 타임아웃 설정 (5초)
+            const timeout = setTimeout(() => {
+                console.log('직접 로드 타임아웃, 대체 이미지 생성');
+                createFallbackImage(imageUrl);
+            }, 5000);
+            
+            img.onload = function() {
+                clearTimeout(timeout);
+                console.log('직접 이미지 로드 성공');
+                currentImage = img;
+                hideImageLoadingStatus();
+                showSelectedImage(img);
+                showControls();
+            };
+            
+            img.onerror = function() {
+                clearTimeout(timeout);
+                console.log('직접 로드도 실패, 대체 이미지 생성');
+                createFallbackImage(imageUrl);
+            };
+            
+            img.src = imageUrl;
+        }
+
+        function createFallbackImage(originalUrl) {
+            // 이미지 로드 실패 시 대체 이미지 생성
+            const canvas = document.createElement('canvas');
+            const ctx = canvas.getContext('2d');
+            
+            canvas.width = 400;
+            canvas.height = 400;
+            
+            // 배경색
+            ctx.fillStyle = '#f0f0f0';
+            ctx.fillRect(0, 0, 400, 400);
+            
+            // 테두리
+            ctx.strokeStyle = '#ddd';
+            ctx.lineWidth = 2;
+            ctx.strokeRect(1, 1, 398, 398);
+            
+            // 텍스트
+            ctx.fillStyle = '#666';
+            ctx.font = 'bold 16px Arial';
+            ctx.textAlign = 'center';
+            ctx.fillText('이미지 플레이스홀더', 200, 180);
+            ctx.fillText('컬러링북으로 변환 가능', 200, 210);
+            
+            // URL 정보
+            ctx.font = '12px Arial';
+            ctx.fillStyle = '#999';
+            const shortUrl = originalUrl.length > 50 ? originalUrl.substring(0, 50) + '...' : originalUrl;
+            ctx.fillText(shortUrl, 200, 240);
+            
+            // Canvas를 이미지로 변환
+            canvas.toBlob(function(blob) {
+                const url = URL.createObjectURL(blob);
+                const img = new Image();
+                
+                img.onload = function() {
+                    console.log('대체 이미지 생성 완료');
+                    currentImage = img;
+                    hideImageLoadingStatus();
+                    showSelectedImage(img);
+                    showControls();
+                    alert('원본 이미지 로드에 실패하여 대체 이미지를 생성했습니다.\n컬러링북 변환은 정상적으로 작동합니다.');
+                };
+                
+                img.src = url;
+            });
+        }
+
+        function setupSliders() {
+            const threshold = document.getElementById('threshold');
+            const thresholdValue = document.getElementById('thresholdValue');
+            const lineWidth = document.getElementById('lineWidth');
+            const lineWidthValue = document.getElementById('lineWidthValue');
+            
+            if (threshold && thresholdValue) {
+                threshold.addEventListener('input', function() {
+                    thresholdValue.textContent = this.value;
+                });
+            }
+
+            if (lineWidth && lineWidthValue) {
+                lineWidth.addEventListener('input', function() {
+                    lineWidthValue.textContent = this.value;
+                });
+            }
+
+            // 웹 슬라이더
+            const webThreshold = document.getElementById('webThreshold');
+            const webThresholdValue = document.getElementById('webThresholdValue');
+            const webLineWidth = document.getElementById('webLineWidth');
+            const webLineWidthValue = document.getElementById('webLineWidthValue');
+            
+            if (webThreshold && webThresholdValue) {
+                webThreshold.addEventListener('input', function() {
+                    webThresholdValue.textContent = this.value;
+                });
+            }
+            
+            if (webLineWidth && webLineWidthValue) {
+                webLineWidth.addEventListener('input', function() {
+                    webLineWidthValue.textContent = this.value;
+                });
+            }
+        }
+
+        function handleFile(file) {
+            if (!file.type.startsWith('image/')) {
+                alert('이미지 파일만 업로드 가능합니다.');
+                return;
+            }
+
+            if (file.size > 10 * 1024 * 1024) {
+                alert('파일 크기가 너무 큽니다. 10MB 이하의 파일만 업로드 가능합니다.');
+                return;
+            }
+
+            const reader = new FileReader();
+            reader.onload = function(e) {
+                const img = new Image();
+                img.onload = function() {
+                    currentImage = img;
+                    showPreview(img);
+                    showControls();
+                    console.log('이미지 로드 완료:', file.name);
+                };
+                img.src = e.target.result;
+            };
+            reader.readAsDataURL(file);
+        }
+
+        function showPreview(img) {
+            const previewSection = document.getElementById('previewSection');
+            const previewImage = document.getElementById('previewImage');
+            
+            if (previewSection && previewImage) {
+                previewImage.src = img.src;
+                previewSection.style.display = 'block';
+                console.log('미리보기 표시됨:', img.src);
+            } else {
+                console.error('미리보기 요소를 찾을 수 없습니다');
+            }
+        }
+
+        function showImageLoadingStatus() {
+            const loadingStatus = document.getElementById('imageLoadingStatus');
+            if (loadingStatus) {
+                loadingStatus.style.display = 'block';
+                console.log('이미지 로딩 상태 표시');
+            }
+        }
+
+        function hideImageLoadingStatus() {
+            const loadingStatus = document.getElementById('imageLoadingStatus');
+            if (loadingStatus) {
+                loadingStatus.style.display = 'none';
+                console.log('이미지 로딩 상태 숨김');
+            }
+        }
+
+        function hideImagePreview() {
+            const selectedImagePreview = document.getElementById('selectedImagePreview');
+            if (selectedImagePreview) {
+                selectedImagePreview.style.display = 'none';
+            }
+        }
+
+        function hideConvertedResult() {
+            const convertedResult = document.getElementById('convertedImageResult');
+            const webControlsSection = document.getElementById('webControlsSection');
+            
+            if (convertedResult) {
+                convertedResult.style.display = 'none';
+            }
+            if (webControlsSection) {
+                webControlsSection.style.display = 'none';
+            }
+        }
+
+        function showSelectedImage(img) {
+            const selectedImagePreview = document.getElementById('selectedImagePreview');
+            const selectedImage = document.getElementById('selectedImage');
+            const webControlsSection = document.getElementById('webControlsSection');
+            
+            if (selectedImagePreview && selectedImage) {
+                selectedImage.src = img.src;
+                selectedImagePreview.style.display = 'block';
+                console.log('선택된 이미지 표시됨');
+            } else {
+                console.error('선택된 이미지 미리보기 요소를 찾을 수 없습니다');
+            }
+
+            // 웹 컨트롤 섹션 표시
+            if (webControlsSection) {
+                webControlsSection.style.display = 'block';
+                console.log('웹 컨트롤 섹션 표시됨');
+            }
+        }
+
+        function showControls() {
+            // 웹 이미지 모드에서는 수동 변환으로 변경 (사용자가 설정을 조정할 수 있도록)
+            console.log('이미지 선택 완료, 설정 후 변환 버튼을 클릭하세요');
+        }
+
+        function processWebImage() {
+            if (!currentImage) {
+                alert('이미지를 먼저 선택해주세요.');
+                return;
+            }
+
+            console.log('웹 이미지 처리 시작');
+
+            try {
+                // 웹 컨트롤에서 설정값 가져오기
+                const threshold = parseInt(document.getElementById('webThreshold').value);
+                const lineWidth = parseInt(document.getElementById('webLineWidth').value);
+                const paperSize = document.getElementById('webPaperSize').value;
+                const orientation = document.getElementById('webOrientation').value;
+                const includeGuide = document.getElementById('webIncludeGuide').checked;
+
+                console.log('설정값:', { threshold, lineWidth, paperSize, orientation, includeGuide });
+
+                // 종이 사이즈에 맞게 캔버스 크기 조정
+                const paper = paperSizes[paperSize];
+                if (!paper) {
+                    console.error('종이 사이즈를 찾을 수 없습니다:', paperSize);
+                    return;
+                }
+
+                let canvasWidth, canvasHeight;
+                
+                if (orientation === 'landscape') {
+                    canvasWidth = paper.height;
+                    canvasHeight = paper.width;
+                } else {
+                    canvasWidth = paper.width;
+                    canvasHeight = paper.height;
+                }
+
+                console.log('캔버스 크기:', { canvasWidth, canvasHeight });
+
+                const canvas = document.getElementById('convertedCanvas');
+                if (!canvas) {
+                    console.error('convertedCanvas 요소를 찾을 수 없습니다');
+                    return;
+                }
+
+                const ctx = canvas.getContext('2d');
+                
+                // 이미지 비율에 맞게 크기 조정
+                const imgRatio = currentImage.width / currentImage.height;
+                const canvasRatio = canvasWidth / canvasHeight;
+                
+                let drawWidth, drawHeight, offsetX = 0, offsetY = 0;
+                
+                if (imgRatio > canvasRatio) {
+                    drawWidth = canvasWidth * 0.9; // 여백 10%
+                    drawHeight = drawWidth / imgRatio;
+                    offsetY = (canvasHeight - drawHeight) / 2;
+                    offsetX = canvasWidth * 0.05;
+                } else {
+                    drawHeight = canvasHeight * 0.9; // 여백 10%
+                    drawWidth = drawHeight * imgRatio;
+                    offsetX = (canvasWidth - drawWidth) / 2;
+                    offsetY = canvasHeight * 0.05;
+                }
+
+                console.log('이미지 그리기 설정:', { drawWidth, drawHeight, offsetX, offsetY });
+
+                canvas.width = canvasWidth;
+                canvas.height = canvasHeight;
+
+                // 흰색 배경
+                ctx.fillStyle = 'white';
+                ctx.fillRect(0, 0, canvasWidth, canvasHeight);
+                console.log('배경 그리기 완료');
+
+                // 이미지 그리기
+                ctx.drawImage(currentImage, offsetX, offsetY, drawWidth, drawHeight);
+                console.log('원본 이미지 그리기 완료');
+
+                // 이미지 처리
+                const imageData = ctx.getImageData(offsetX, offsetY, drawWidth, drawHeight);
+                console.log('이미지 데이터 추출 완료:', imageData.width, 'x', imageData.height);
+                
+                const processedData = applyImageProcessing(imageData, threshold, lineWidth);
+                console.log('이미지 처리 완료');
+                
+                ctx.putImageData(processedData, offsetX, offsetY);
+                console.log('처리된 이미지 적용 완료');
+
+                // 색칠 가이드 추가 (원본 이미지를 작게 표시)
+                if (includeGuide) {
+                    addColoringGuide(ctx, canvasWidth, canvasHeight, currentImage, paper.name, orientation);
+                    console.log('색칠 가이드 추가 완료');
+                }
+
+                // 변환된 결과 표시
+                const resultSection = document.getElementById('convertedImageResult');
+                if (resultSection) {
+                    resultSection.style.display = 'block';
+                    console.log('결과 섹션 표시됨');
+                    
+                    // 결과 섹션으로 부드럽게 스크롤
+                    setTimeout(() => {
+                        resultSection.scrollIntoView({ 
+                            behavior: 'smooth', 
+                            block: 'start',
+                            inline: 'nearest'
+                        });
+                    }, 100);
+                } else {
+                    console.error('convertedImageResult 요소를 찾을 수 없습니다');
+                }
+
+                console.log('웹 이미지 처리 완료');
+            } catch (error) {
+                console.error('웹 이미지 처리 중 오류:', error);
+                alert('이미지 처리 중 오류가 발생했습니다: ' + error.message);
+            }
+        }
+
+        function processImageInWorkspace() {
+            console.log('워크스페이스에서 이미지 처리 시작');
+            
+            // 기본 설정값
+            const threshold = 128;
+            const lineWidth = 1;
+            const includeGuide = false;
+            
+            const canvas = document.getElementById('convertedCanvas');
+            const ctx = canvas.getContext('2d');
+            
+            // 적당한 크기로 조정 (400x400 최대)
+            const maxSize = 400;
+            let canvasWidth, canvasHeight;
+            
+            if (currentImage.width > currentImage.height) {
+                canvasWidth = Math.min(currentImage.width, maxSize);
+                canvasHeight = (currentImage.height * canvasWidth) / currentImage.width;
+            } else {
+                canvasHeight = Math.min(currentImage.height, maxSize);
+                canvasWidth = (currentImage.width * canvasHeight) / currentImage.height;
+            }
+            
+            canvas.width = canvasWidth;
+            canvas.height = canvasHeight;
+            
+            // 흰색 배경
+            ctx.fillStyle = 'white';
+            ctx.fillRect(0, 0, canvasWidth, canvasHeight);
+            
+            // 이미지 그리기
+            ctx.drawImage(currentImage, 0, 0, canvasWidth, canvasHeight);
+            
+            // 이미지 처리
+            const imageData = ctx.getImageData(0, 0, canvasWidth, canvasHeight);
+            const processedData = applyImageProcessing(imageData, threshold, lineWidth);
+            
+            ctx.putImageData(processedData, 0, 0);
+            
+            // 변환된 결과 표시
+            document.getElementById('convertedImageResult').style.display = 'block';
+            console.log('이미지 변환 완료');
+        }
+
+        function processImage() {
+            if (!currentImage) {
+                alert('이미지를 먼저 선택해주세요.');
+                return;
+            }
+
+            console.log('이미지 처리 시작');
+
+            const threshold = parseInt(document.getElementById('threshold').value);
+            const lineWidth = parseInt(document.getElementById('lineWidth').value);
+            const paperSize = document.getElementById('paperSize').value;
+            const orientation = document.getElementById('orientation').value;
+            const includeGuide = document.getElementById('includeGuide').checked;
+
+            // 종이 사이즈에 맞게 캔버스 크기 조정
+            const paper = paperSizes[paperSize];
+            let canvasWidth, canvasHeight;
+            
+            if (orientation === 'landscape') {
+                canvasWidth = paper.height;
+                canvasHeight = paper.width;
+            } else {
+                canvasWidth = paper.width;
+                canvasHeight = paper.height;
+            }
+
+            const canvas = document.createElement('canvas');
+            const ctx = canvas.getContext('2d');
+            
+            // 이미지 비율에 맞게 크기 조정
+            const imgRatio = currentImage.width / currentImage.height;
+            const canvasRatio = canvasWidth / canvasHeight;
+            
+            let drawWidth, drawHeight, offsetX = 0, offsetY = 0;
+            
+            if (imgRatio > canvasRatio) {
+                drawWidth = canvasWidth * 0.9; // 여백 10%
+                drawHeight = drawWidth / imgRatio;
+                offsetY = (canvasHeight - drawHeight) / 2;
+                offsetX = canvasWidth * 0.05;
+            } else {
+                drawHeight = canvasHeight * 0.9; // 여백 10%
+                drawWidth = drawHeight * imgRatio;
+                offsetX = (canvasWidth - drawWidth) / 2;
+                offsetY = canvasHeight * 0.05;
+            }
+
+            canvas.width = canvasWidth;
+            canvas.height = canvasHeight;
+
+            // 흰색 배경
+            ctx.fillStyle = 'white';
+            ctx.fillRect(0, 0, canvasWidth, canvasHeight);
+
+            // 이미지 그리기
+            ctx.drawImage(currentImage, offsetX, offsetY, drawWidth, drawHeight);
+
+            // 이미지 처리
+            const imageData = ctx.getImageData(offsetX, offsetY, drawWidth, drawHeight);
+            const processedData = applyImageProcessing(imageData, threshold, lineWidth);
+            
+            ctx.putImageData(processedData, offsetX, offsetY);
+
+            // 색칠 가이드 추가 (원본 이미지를 작게 표시)
+            if (includeGuide) {
+                addColoringGuide(ctx, canvasWidth, canvasHeight, currentImage, paper.name, orientation);
+            }
+
+            showResult(canvas);
+            console.log('이미지 처리 완료');
+        }
+
+        function applyImageProcessing(imageData, threshold, lineWidth) {
+            const data = new Uint8ClampedArray(imageData.data);
+            const width = imageData.width;
+            const height = imageData.height;
+
+            // 그레이스케일 변환
+            for (let i = 0; i < data.length; i += 4) {
+                const gray = Math.round(0.299 * data[i] + 0.587 * data[i + 1] + 0.114 * data[i + 2]);
+                data[i] = gray;
+                data[i + 1] = gray;
+                data[i + 2] = gray;
+            }
+
+            // 엣지 검출
+            const output = new Uint8ClampedArray(data.length);
+            
+            for (let y = 1; y < height - 1; y++) {
+                for (let x = 1; x < width - 1; x++) {
+                    const idx = (y * width + x) * 4;
+                    
+                    let gx = 0, gy = 0;
+                    for (let dy = -1; dy <= 1; dy++) {
+                        for (let dx = -1; dx <= 1; dx++) {
+                            const pixelIdx = ((y + dy) * width + (x + dx)) * 4;
+                            const intensity = data[pixelIdx];
+                            
+                            if (dx === -1) gx -= intensity * (dy === 0 ? 2 : 1);
+                            if (dx === 1) gx += intensity * (dy === 0 ? 2 : 1);
+                            if (dy === -1) gy -= intensity * (dx === 0 ? 2 : 1);
+                            if (dy === 1) gy += intensity * (dx === 0 ? 2 : 1);
+                        }
+                    }
+                    
+                    const magnitude = Math.sqrt(gx * gx + gy * gy);
+                    const edge = magnitude > threshold ? 0 : 255;
+                    
+                    output[idx] = edge;
+                    output[idx + 1] = edge;
+                    output[idx + 2] = edge;
+                    output[idx + 3] = 255;
+                }
+            }
+
+            // 선 굵기 적용
+            if (lineWidth > 1) {
+                const thickened = new Uint8ClampedArray(output.length);
+                for (let i = 0; i < thickened.length; i++) {
+                    thickened[i] = 255;
+                }
+                thickened[thickened.length - 1] = 255; // Alpha
+
+                for (let y = 0; y < height; y++) {
+                    for (let x = 0; x < width; x++) {
+                        const idx = (y * width + x) * 4;
+                        
+                        if (output[idx] === 0) {
+                            for (let dy = -lineWidth; dy <= lineWidth; dy++) {
+                                for (let dx = -lineWidth; dx <= lineWidth; dx++) {
+                                    const newX = x + dx;
+                                    const newY = y + dy;
+                                    
+                                    if (newX >= 0 && newX < width && newY >= 0 && newY < height) {
+                                        if (dx * dx + dy * dy <= lineWidth * lineWidth) {
+                                            const newIdx = (newY * width + newX) * 4;
+                                            thickened[newIdx] = 0;
+                                            thickened[newIdx + 1] = 0;
+                                            thickened[newIdx + 2] = 0;
+                                            thickened[newIdx + 3] = 255;
+                                        }
+                                    }
+                                }
+                            }
+                        }
+                    }
+                }
+                return new ImageData(thickened, width, height);
+            }
+
+            return new ImageData(output, width, height);
+        }
+
+        function addColoringGuide(ctx, width, height, originalImage, paperName, orientation) {
+            // 색칠 가이드 크기 설정 (전체 크기의 1/4 정도)
+            const guideSize = Math.min(width, height) * 0.25;
+            const guideWidth = guideSize;
+            const guideHeight = guideSize * (originalImage.height / originalImage.width);
+            
+            // 우측 상단에 위치
+            const guideX = width - guideWidth - 20;
+            const guideY = 20;
+            
+            // 가이드 배경 (흰색)
+            ctx.fillStyle = '#ffffff';
+            ctx.fillRect(guideX - 5, guideY - 5, guideWidth + 10, guideHeight + 35);
+            
+            // 가이드 테두리
+            ctx.strokeStyle = '#333';
+            ctx.lineWidth = 2;
+            ctx.strokeRect(guideX - 5, guideY - 5, guideWidth + 10, guideHeight + 35);
+            
+            // 원본 이미지 그리기 (색칠 가이드)
+            ctx.drawImage(originalImage, guideX, guideY, guideWidth, guideHeight);
+            
+            // 이미지 테두리
+            ctx.strokeStyle = '#666';
+            ctx.lineWidth = 1;
+            ctx.strokeRect(guideX, guideY, guideWidth, guideHeight);
+            
+            // 가이드 레이블
+            ctx.fillStyle = '#333';
+            ctx.font = 'bold 12px Arial';
+            ctx.textAlign = 'center';
+            ctx.fillText('색칠 가이드', guideX + guideWidth / 2, guideY + guideHeight + 20);
+            
+            // 종이 정보 (좌측 하단)
+            ctx.fillStyle = '#666';
+            ctx.font = '10px Arial';
+            ctx.textAlign = 'left';
+            const infoText = `${paperName} | ${orientation === 'portrait' ? '세로' : '가로'} | ${new Date().toLocaleDateString('ko-KR')}`;
+            ctx.fillText(infoText, 20, height - 10);
+            
+            // 네 모서리에 자르기 가이드
+            ctx.strokeStyle = '#999';
+            ctx.lineWidth = 1;
+            const markSize = 10;
+            const margin = 5;
+            
+            [[margin, margin], [width - margin, margin], [margin, height - margin], [width - margin, height - margin]].forEach(([x, y]) => {
+                ctx.beginPath();
+                ctx.moveTo(x - markSize, y);
+                ctx.lineTo(x + markSize, y);
+                ctx.moveTo(x, y - markSize);
+                ctx.lineTo(x, y + markSize);
+                ctx.stroke();
+            });
+            
+            // 텍스트 정렬 초기화
+            ctx.textAlign = 'left';
+        }
+
+        function showResult(canvas) {
+            const resultSection = document.getElementById('resultSection');
+            const resultCanvas = document.getElementById('resultCanvas');
+            
+            resultCanvas.width = canvas.width;
+            resultCanvas.height = canvas.height;
+            const ctx = resultCanvas.getContext('2d');
+            ctx.drawImage(canvas, 0, 0);
+            
+            resultSection.style.display = 'block';
+            resultSection.scrollIntoView({ behavior: 'smooth' });
+        }
+
+        function downloadResult() {
+            const canvas = document.getElementById('resultCanvas');
+            if (!canvas) {
+                alert('처리된 이미지가 없습니다.');
+                return;
+            }
+
+            const paperSize = document.getElementById('paperSize').value;
+            const orientation = document.getElementById('orientation').value;
+            const link = document.createElement('a');
+            link.download = `coloring-book-${paperSize}-${orientation}-${Date.now()}.png`;
+            link.href = canvas.toDataURL();
+            link.click();
+            console.log('다운로드 완료');
+        }
+
+        function resetApp() {
+            currentImage = null;
+            document.getElementById('previewSection').style.display = 'none';
+            document.getElementById('controlsSection').style.display = 'none';
+            document.getElementById('resultSection').style.display = 'none';
+            document.getElementById('fileInput').value = '';
+            console.log('앱 리셋 완료');
+        }
+
+        console.log('앱 로드 완료');
+    </script>
+</body>
+</html>

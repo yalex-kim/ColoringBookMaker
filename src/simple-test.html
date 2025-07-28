@@ -1,0 +1,48 @@
+<!DOCTYPE html>
+<html lang="ko">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>간단 테스트</title>
+    <style>
+        body { font-family: Arial, sans-serif; padding: 20px; }
+        .test { background: #f0f0f0; padding: 10px; margin: 10px 0; }
+    </style>
+</head>
+<body>
+    <h1>서버 연결 테스트</h1>
+    <div class="test">
+        <h3>✅ HTML 로드 성공</h3>
+        <p>시간: <span id="time"></span></p>
+    </div>
+    
+    <div class="test">
+        <h3>JavaScript 테스트</h3>
+        <button onclick="testJS()">클릭 테스트</button>
+        <p id="js-result">대기 중...</p>
+    </div>
+
+    <div class="test">
+        <h3>CSS 테스트</h3>
+        <div style="background: linear-gradient(45deg, #667eea, #764ba2); color: white; padding: 10px; border-radius: 5px;">
+            그라디언트 배경 테스트
+        </div>
+    </div>
+
+    <script>
+        console.log('페이지 로드됨');
+        document.getElementById('time').textContent = new Date().toLocaleString();
+        
+        function testJS() {
+            document.getElementById('js-result').textContent = '✅ JavaScript 동작 확인!';
+            console.log('JavaScript 테스트 성공');
+        }
+        
+        // 에러 감지
+        window.addEventListener('error', function(e) {
+            console.error('에러 발생:', e.error);
+            document.body.innerHTML += '<div style="color: red; background: #ffeeee; padding: 10px; margin: 10px 0;">❌ 에러: ' + e.message + '</div>';
+        });
+    </script>
+</body>
+</html>

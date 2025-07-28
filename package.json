@@ -1,0 +1,28 @@
+{
+  "name": "coloringbookmaker",
+  "version": "1.0.0",
+  "description": "This is a service of making coloring book with two method.\r 1. Parse images from web site\r 2. Upload image file directly",
+  "main": "index.js",
+  "scripts": {
+    "dev": "vite",
+    "dev-host": "vite --host 0.0.0.0 --port 3000",
+    "dev-alt": "vite --host 127.0.0.1 --port 8080",
+    "serve": "python3 -m http.server 8000 -d src",
+    "build": "vite build",
+    "preview": "vite preview"
+  },
+  "repository": {
+    "type": "git",
+    "url": "git+https://github.com/yalex-kim/ColoringBookMaker.git"
+  },
+  "keywords": [],
+  "author": "",
+  "license": "ISC",
+  "bugs": {
+    "url": "https://github.com/yalex-kim/ColoringBookMaker/issues"
+  },
+  "homepage": "https://github.com/yalex-kim/ColoringBookMaker#readme",
+  "devDependencies": {
+    "vite": "^7.0.6"
+  }
+}

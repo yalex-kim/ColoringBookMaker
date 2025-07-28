@@ -1,0 +1,212 @@
+<!DOCTYPE html>
+<html lang="ko">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>컬러링북 메이커 - 직접 실행</title>
+    <style>
+        * {
+            margin: 0;
+            padding: 0;
+            box-sizing: border-box;
+        }
+
+        body {
+            font-family: 'Segoe UI', Tahoma, Geneva, Verdana, sans-serif;
+            background: linear-gradient(135deg, #667eea 0%, #764ba2 100%);
+            min-height: 100vh;
+            padding: 20px;
+        }
+
+        .container {
+            max-width: 800px;
+            margin: 0 auto;
+            background: white;
+            border-radius: 20px;
+            padding: 30px;
+            box-shadow: 0 20px 40px rgba(0,0,0,0.1);
+        }
+
+        .header {
+            text-align: center;
+            margin-bottom: 30px;
+        }
+
+        .header h1 {
+            color: #333;
+            font-size: 2.5em;
+            margin-bottom: 10px;
+            background: linear-gradient(45deg, #667eea, #764ba2);
+            -webkit-background-clip: text;
+            -webkit-text-fill-color: transparent;
+            background-clip: text;
+        }
+
+        .upload-box {
+            border: 3px dashed #667eea;
+            border-radius: 15px;
+            padding: 50px 20px;
+            text-align: center;
+            cursor: pointer;
+            transition: all 0.3s ease;
+            background: #f9f9ff;
+            margin-bottom: 20px;
+        }
+
+        .upload-box:hover {
+            border-color: #764ba2;
+            background: #f0f2ff;
+            transform: translateY(-2px);
+        }
+
+        .upload-icon {
+            font-size: 4em;
+            margin-bottom: 20px;
+            opacity: 0.7;
+        }
+
+        .primary-btn {
+            background: linear-gradient(135deg, #667eea, #764ba2);
+            color: white;
+            border: none;
+            padding: 15px 30px;
+            border-radius: 10px;
+            font-size: 1em;
+            font-weight: 600;
+            cursor: pointer;
+            transition: all 0.3s ease;
+            margin: 10px;
+        }
+
+        .primary-btn:hover {
+            transform: translateY(-2px);
+            box-shadow: 0 10px 25px rgba(102, 126, 234, 0.3);
+        }
+
+        .image-container {
+            display: flex;
+            justify-content: center;
+            align-items: center;
+            background: #f9f9f9;
+            border-radius: 15px;
+            padding: 20px;
+            min-height: 200px;
+            margin: 20px 0;
+        }
+
+        .image-container img, .image-container canvas {
+            max-width: 100%;
+            max-height: 400px;
+            border-radius: 10px;
+            box-shadow: 0 10px 30px rgba(0,0,0,0.1);
+        }
+
+        .hidden {
+            display: none;
+        }
+    </style>
+</head>
+<body>
+    <div class="container">
+        <div class="header">
+            <h1>컬러링북 메이커</h1>
+            <p>이미지를 업로드하여 컬러링북으로 변환하세요</p>
+        </div>
+
+        <div class="upload-box" onclick="document.getElementById('fileInput').click()">
+            <div class="upload-icon">📁</div>
+            <h3>이미지 파일 업로드</h3>
+            <p>클릭해서 파일을 선택하세요</p>
+            <input type="file" id="fileInput" accept="image/*" style="display: none;">
+        </div>
+
+        <div id="previewSection" class="hidden">
+            <h3>원본 이미지</h3>
+            <div class="image-container">
+                <img id="previewImage" alt="미리보기">
+            </div>
+            <button class="primary-btn" onclick="processImage()">컬러링북 변환</button>
+            <button class="primary-btn" onclick="resetApp()">초기화</button>
+        </div>
+
+        <div id="resultSection" class="hidden">
+            <h3>컬러링북 결과</h3>
+            <div class="image-container">
+                <canvas id="resultCanvas"></canvas>
+            </div>
+            <button class="primary-btn" onclick="downloadResult()">다운로드</button>
+        </div>
+    </div>
+
+    <script>
+        let currentImage = null;
+
+        document.getElementById('fileInput').addEventListener('change', function(e) {
+            const file = e.target.files[0];
+            if (!file) return;
+
+            const reader = new FileReader();
+            reader.onload = function(e) {
+                const img = new Image();
+                img.onload = function() {
+                    currentImage = img;
+                    document.getElementById('previewImage').src = img.src;
+                    document.getElementById('previewSection').classList.remove('hidden');
+                };
+                img.src = e.target.result;
+            };
+            reader.readAsDataURL(file);
+        });
+
+        function processImage() {
+            if (!currentImage) return;
+
+            const canvas = document.createElement('canvas');
+            const ctx = canvas.getContext('2d');
+            
+            canvas.width = currentImage.width;
+            canvas.height = currentImage.height;
+            ctx.drawImage(currentImage, 0, 0);
+
+            const imageData = ctx.getImageData(0, 0, canvas.width, canvas.height);
+            const data = imageData.data;
+
+            // 간단한 엣지 검출
+            for (let i = 0; i < data.length; i += 4) {
+                const gray = Math.round(0.299 * data[i] + 0.587 * data[i + 1] + 0.114 * data[i + 2]);
+                const edge = gray > 128 ? 255 : 0;
+                data[i] = edge;
+                data[i + 1] = edge;
+                data[i + 2] = edge;
+            }
+
+            ctx.putImageData(imageData, 0, 0);
+
+            const resultCanvas = document.getElementById('resultCanvas');
+            resultCanvas.width = canvas.width;
+            resultCanvas.height = canvas.height;
+            const resultCtx = resultCanvas.getContext('2d');
+            resultCtx.drawImage(canvas, 0, 0);
+
+            document.getElementById('resultSection').classList.remove('hidden');
+        }
+
+        function downloadResult() {
+            const canvas = document.getElementById('resultCanvas');
+            if (!canvas) return;
+
+            const link = document.createElement('a');
+            link.download = 'coloring-book.png';
+            link.href = canvas.toDataURL();
+            link.click();
+        }
+
+        function resetApp() {
+            currentImage = null;
+            document.getElementById('previewSection').classList.add('hidden');
+            document.getElementById('resultSection').classList.add('hidden');
+            document.getElementById('fileInput').value = '';
+        }
+    </script>
+</body>
+</html>
