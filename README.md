@@ -69,7 +69,7 @@ ColoringBookMaker/
 │       ├── main.js            # 메인 애플리케이션
 │       └── modules/           # 모듈화된 기능들
 │           ├── ColoringBookProcessor.js  # 이미지 처리 엔진
-│           ├── GeminiAI.js              # AI 이미지 생성
+│           ├── AIImageGenerator.js      # AI 이미지 생성
 │           ├── ImageUploader.js         # 파일 업로드 관리
 │           ├── WebImageLoader.js        # 웹 이미지 로드
 │           └── UIController.js          # UI 제어
