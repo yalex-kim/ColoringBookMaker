@@ -370,7 +370,65 @@
             });
             document.getElementById(`${mode}-mode`).classList.add('active');
 
+            // 모든 UI 상태 초기화
+            resetAllUIStates();
+
             console.log(`모드 전환: ${mode}`);
+        }
+
+        function resetAllUIStates() {
+            // 현재 이미지 초기화
+            currentImage = null;
+            
+            // 모든 섹션 숨기기
+            const sectionsToHide = [
+                'previewSection',
+                'controlsSection', 
+                'resultSection',
+                'webWorkspace',
+                'selectedImagePreview',
+                'webControlsSection',
+                'convertedImageResult',
+                'imageLoadingStatus',
+                'aiResults'
+            ];
+            
+            sectionsToHide.forEach(sectionId => {
+                const section = document.getElementById(sectionId);
+                if (section) {
+                    section.style.display = 'none';
+                }
+            });
+
+            // 입력 필드 초기화
+            const fileInput = document.getElementById('fileInput');
+            if (fileInput) {
+                fileInput.value = '';
+            }
+            
+            const imageUrl = document.getElementById('imageUrl');
+            if (imageUrl) {
+                imageUrl.value = '';
+            }
+            
+            const promptInput = document.getElementById('promptInput');
+            if (promptInput) {
+                promptInput.value = '';
+            }
+
+            // 웹 이미지 갤러리 초기화
+            const imageGrid = document.getElementById('imageGrid');
+            if (imageGrid) {
+                imageGrid.innerHTML = '';
+            }
+
+            // 생성된 이미지 갤러리 초기화
+            const generatedImages = document.getElementById('generatedImages');
+            if (generatedImages) {
+                generatedImages.innerHTML = '';
+            }
+
+            console.log('모든 UI 상태 초기화 완료');
         }
 
         function setExampleUrl(url) {
