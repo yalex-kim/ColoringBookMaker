@@ -419,6 +419,12 @@
             if (uploadDownloadBtn) {
                 uploadDownloadBtn.addEventListener('click', downloadUploadResult);
             }
+
+            // 웹 모드 다운로드 버튼 이벤트
+            const webDownloadBtn = document.getElementById('downloadBtn');
+            if (webDownloadBtn) {
+                webDownloadBtn.addEventListener('click', downloadWebResult);
+            }
         }
 
         function switchMode(mode) {
@@ -1337,6 +1343,22 @@
             link.href = canvas.toDataURL();
             link.click();
             console.log('업로드 결과 다운로드 완료');
+        }
+
+        function downloadWebResult() {
+            const canvas = document.getElementById('convertedCanvas');
+            if (!canvas) {
+                alert('처리된 이미지가 없습니다.');
+                return;
+            }
+
+            const paperSize = document.getElementById('webPaperSize').value;
+            const orientation = document.getElementById('webOrientation').value;
+            const link = document.createElement('a');
+            link.download = `coloring-book-web-${paperSize}-${orientation}-${Date.now()}.png`;
+            link.href = canvas.toDataURL();
+            link.click();
+            console.log('웹 결과 다운로드 완료');
         }
 
         function handleFile(file) {
