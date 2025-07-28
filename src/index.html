@@ -74,6 +74,7 @@
                                         <div class="slider-group">
                                             <input type="range" id="uploadThreshold" min="50" max="200" value="90">
                                             <span id="uploadThresholdValue">90</span>
+                                            <button id="uploadAutoThreshold" class="auto-btn" title="이미지에 최적화된 임계값 자동 설정">🎯 자동</button>
                                         </div>
                                     </div>
                                     
@@ -115,7 +116,22 @@
                                 
                                 <div class="web-action-buttons">
                                     <button id="uploadProcessBtn" class="primary-btn">🎨 컬러링북 변환</button>
+                                    <button id="uploadBatchProcessBtn" class="primary-btn" style="background: linear-gradient(135deg, #4CAF50, #45a049); display: none;">⚡ 모든 이미지 일괄 처리</button>
                                 </div>
+                            </div>
+                            
+                            <!-- 배치 처리 진행 상황 -->
+                            <div id="uploadBatchProgress" class="batch-progress" style="display: none;">
+                                <h3>⚡ 일괄 처리 진행 상황</h3>
+                                <div class="progress-container">
+                                    <div class="progress-bar">
+                                        <div id="uploadBatchProgressBar" class="progress-fill"></div>
+                                    </div>
+                                    <div class="progress-text">
+                                        <span id="uploadBatchProgressText">준비 중...</span>
+                                    </div>
+                                </div>
+                                <div id="uploadBatchResults" class="batch-results"></div>
                             </div>
                             
                             <div id="uploadConvertedImageResult" class="converted-result" style="display: none;">
@@ -125,6 +141,7 @@
                                 </div>
                                 <div class="result-actions">
                                     <button id="uploadDownloadBtn" class="primary-btn">📥 다운로드</button>
+                                    <button id="uploadBatchDownloadBtn" class="primary-btn" style="background: linear-gradient(135deg, #4CAF50, #45a049); display: none;">📦 모든 결과 다운로드</button>
                                 </div>
                             </div>
                         </div>
@@ -207,6 +224,7 @@
                                         <div class="slider-group">
                                             <input type="range" id="webThreshold" min="50" max="200" value="90">
                                             <span id="webThresholdValue">90</span>
+                                            <button id="webAutoThreshold" class="auto-btn" title="이미지에 최적화된 임계값 자동 설정">🎯 자동</button>
                                         </div>
                                     </div>
                                     
@@ -330,6 +348,7 @@
 
         let currentImage = null;
         let openCvReady = false;
+        let batchResults = []; // 배치 처리 결과 저장
 
         // OpenCV.js 초기화
         function onOpenCvReady() {
@@ -342,6 +361,42 @@
                 el.textContent = 'OpenCV.js 로드됨 ✅';
                 el.style.color = 'green';
             });
+        }
+
+        // 자동 임계값 계산 함수
+        function calculateOptimalThreshold(imageData) {
+            if (!openCvReady || typeof cv === 'undefined') {
+                console.warn('OpenCV가 로드되지 않아 기본값을 사용합니다.');
+                return 90;
+            }
+
+            try {
+                // ImageData를 OpenCV Mat으로 변환
+                const src = cv.matFromImageData(imageData);
+                const gray = new cv.Mat();
+                
+                // 그레이스케일 변환
+                cv.cvtColor(src, gray, cv.COLOR_RGBA2GRAY);
+                
+                // Otsu의 방법으로 최적 임계값 계산
+                const binary = new cv.Mat();
+                const threshold = cv.threshold(gray, binary, 0, 255, cv.THRESH_BINARY + cv.THRESH_OTSU);
+                
+                // 메모리 정리
+                src.delete();
+                gray.delete();
+                binary.delete();
+                
+                // Canny에 적합하도록 조정 (Otsu 결과를 기반으로)
+                const adjustedThreshold = Math.min(Math.max(threshold * 0.8, 50), 200);
+                
+                console.log('자동 계산된 임계값:', adjustedThreshold, '(Otsu 원본:', threshold, ')');
+                return Math.round(adjustedThreshold);
+                
+            } catch (error) {
+                console.error('임계값 자동 계산 중 오류:', error);
+                return 90; // 기본값
+            }
         }
 
         document.addEventListener('DOMContentLoaded', function() {
@@ -419,6 +474,286 @@
             if (uploadDownloadBtn) {
                 uploadDownloadBtn.addEventListener('click', downloadUploadResult);
             }
+
+            // 자동 임계값 버튼 이벤트
+            const uploadAutoThresholdBtn = document.getElementById('uploadAutoThreshold');
+            if (uploadAutoThresholdBtn) {
+                uploadAutoThresholdBtn.addEventListener('click', () => autoAdjustThreshold('upload'));
+            }
+
+            const webAutoThresholdBtn = document.getElementById('webAutoThreshold');
+            if (webAutoThresholdBtn) {
+                webAutoThresholdBtn.addEventListener('click', () => autoAdjustThreshold('web'));
+            }
+
+            // 배치 처리 버튼 이벤트
+            const uploadBatchProcessBtn = document.getElementById('uploadBatchProcessBtn');
+            if (uploadBatchProcessBtn) {
+                uploadBatchProcessBtn.addEventListener('click', processAllUploadedImages);
+            }
+
+            const uploadBatchDownloadBtn = document.getElementById('uploadBatchDownloadBtn');
+            if (uploadBatchDownloadBtn) {
+                uploadBatchDownloadBtn.addEventListener('click', downloadAllBatchResults);
+            }
+        }
+
+        // 자동 임계값 조정 함수
+        function autoAdjustThreshold(mode) {
+            if (!currentImage) {
+                alert('먼저 이미지를 선택해주세요.');
+                return;
+            }
+
+            const button = document.getElementById(`${mode}AutoThreshold`);
+            button.disabled = true;
+            button.textContent = '🔄 계산중...';
+
+            try {
+                // 현재 이미지를 캔버스에 그려서 ImageData 얻기
+                const canvas = document.createElement('canvas');
+                const ctx = canvas.getContext('2d');
+                canvas.width = currentImage.width;
+                canvas.height = currentImage.height;
+                ctx.drawImage(currentImage, 0, 0);
+                
+                const imageData = ctx.getImageData(0, 0, canvas.width, canvas.height);
+                
+                // 최적 임계값 계산
+                const optimalThreshold = calculateOptimalThreshold(imageData);
+                
+                // UI 업데이트
+                const thresholdSlider = document.getElementById(`${mode}Threshold`);
+                const thresholdValue = document.getElementById(`${mode}ThresholdValue`);
+                
+                thresholdSlider.value = optimalThreshold;
+                thresholdValue.textContent = optimalThreshold;
+                
+                // 사용자에게 피드백
+                const statusEl = document.querySelector(`#${mode}ControlsSection .opencv-status`);
+                if (statusEl) {
+                    const originalText = statusEl.textContent;
+                    statusEl.textContent = `🎯 자동 조정됨: ${optimalThreshold}`;
+                    statusEl.style.color = '#4CAF50';
+                    
+                    setTimeout(() => {
+                        statusEl.textContent = originalText;
+                        statusEl.style.color = 'green';
+                    }, 3000);
+                }
+                
+                console.log(`${mode} 모드 임계값 자동 조정: ${optimalThreshold}`);
+                
+            } catch (error) {
+                console.error('자동 임계값 조정 실패:', error);
+                alert('자동 조정에 실패했습니다. 수동으로 조정해주세요.');
+            } finally {
+                button.disabled = false;
+                button.textContent = '🎯 자동';
+            }
+        }
+
+        // 배치 처리 함수들
+        async function processAllUploadedImages() {
+            const uploadedImages = document.querySelectorAll('#uploadImageGrid .image-item');
+            
+            if (uploadedImages.length === 0) {
+                alert('처리할 이미지가 없습니다. 먼저 이미지를 업로드해주세요.');
+                return;
+            }
+
+            if (uploadedImages.length < 2) {
+                alert('배치 처리는 2개 이상의 이미지에서만 사용할 수 있습니다.');
+                return;
+            }
+
+            // UI 준비
+            const batchProgress = document.getElementById('uploadBatchProgress');
+            const batchResults = document.getElementById('uploadBatchResults');
+            const progressBar = document.getElementById('uploadBatchProgressBar');
+            const progressText = document.getElementById('uploadBatchProgressText');
+            const batchProcessBtn = document.getElementById('uploadBatchProcessBtn');
+            const batchDownloadBtn = document.getElementById('uploadBatchDownloadBtn');
+
+            batchProgress.style.display = 'block';
+            batchResults.innerHTML = '';
+            progressBar.style.width = '0%';
+            batchProcessBtn.disabled = true;
+            batchProcessBtn.textContent = '⏳ 처리 중...';
+
+            // 설정값 가져오기
+            const threshold = parseInt(document.getElementById('uploadThreshold').value);
+            const lineWidth = parseInt(document.getElementById('uploadLineWidth').value);
+            const paperSize = document.getElementById('uploadPaperSize').value;
+            const orientation = document.getElementById('uploadOrientation').value;
+
+            window.batchResults = []; // 전역 변수에 저장
+            let processed = 0;
+            const total = uploadedImages.length;
+
+            try {
+                for (let i = 0; i < uploadedImages.length; i++) {
+                    const imageItem = uploadedImages[i];
+                    const imageSrc = imageItem.querySelector('img').src;
+                    const fileName = imageItem.dataset.filename || `이미지_${i + 1}`;
+
+                    // 진행 상황 업데이트
+                    progressText.textContent = `${fileName} 처리 중... (${i + 1}/${total})`;
+                    progressBar.style.width = `${(i / total) * 100}%`;
+
+                    // 결과 아이템 생성
+                    const resultItem = createBatchResultItem(fileName, 'processing');
+                    batchResults.appendChild(resultItem);
+
+                    try {
+                        // 이미지 로드
+                        const img = await loadImageFromSrc(imageSrc);
+                        
+                        // 이미지 처리
+                        const processedCanvas = await processImageWithSettings(img, threshold, lineWidth, paperSize, orientation);
+                        
+                        // 결과 저장
+                        const result = {
+                            fileName: fileName,
+                            originalSrc: imageSrc,
+                            canvas: processedCanvas,
+                            status: 'completed'
+                        };
+                        window.batchResults.push(result);
+
+                        // UI 업데이트
+                        updateBatchResultItem(resultItem, result, 'completed');
+
+                    } catch (error) {
+                        console.error(`${fileName} 처리 실패:`, error);
+                        updateBatchResultItem(resultItem, { fileName, error: error.message }, 'error');
+                    }
+
+                    processed++;
+                }
+
+                // 완료
+                progressBar.style.width = '100%';
+                progressText.textContent = `모든 이미지 처리 완료! (${processed}/${total})`;
+                batchDownloadBtn.style.display = 'inline-block';
+
+            } catch (error) {
+                console.error('배치 처리 중 오류:', error);
+                progressText.textContent = '배치 처리 중 오류가 발생했습니다.';
+            } finally {
+                batchProcessBtn.disabled = false;
+                batchProcessBtn.textContent = '⚡ 모든 이미지 일괄 처리';
+            }
+        }
+
+        function createBatchResultItem(fileName, status) {
+            const item = document.createElement('div');
+            item.className = 'batch-result-item';
+            item.innerHTML = `
+                <div class="item-name">${fileName}</div>
+                <div class="item-status status-${status}">
+                    ${status === 'processing' ? '⏳ 처리 중...' : 
+                      status === 'completed' ? '✅ 완료' : 
+                      status === 'error' ? '❌ 실패' : ''}
+                </div>
+            `;
+            return item;
+        }
+
+        function updateBatchResultItem(item, result, status) {
+            const statusEl = item.querySelector('.item-status');
+            statusEl.className = `item-status status-${status}`;
+            
+            if (status === 'completed' && result.canvas) {
+                // 썸네일 추가
+                const canvas = result.canvas;
+                const thumbnail = document.createElement('canvas');
+                const thumbCtx = thumbnail.getContext('2d');
+                thumbnail.width = 150;
+                thumbnail.height = 150 * (canvas.height / canvas.width);
+                thumbCtx.drawImage(canvas, 0, 0, thumbnail.width, thumbnail.height);
+                
+                item.insertBefore(thumbnail, item.firstChild);
+                statusEl.textContent = '✅ 완료';
+            } else if (status === 'error') {
+                statusEl.textContent = `❌ 실패: ${result.error}`;
+            }
+        }
+
+        async function loadImageFromSrc(src) {
+            return new Promise((resolve, reject) => {
+                const img = new Image();
+                img.onload = () => resolve(img);
+                img.onerror = reject;
+                img.src = src;
+            });
+        }
+
+        async function processImageWithSettings(img, threshold, lineWidth, paperSize, orientation) {
+            return new Promise((resolve, reject) => {
+                try {
+                    const canvas = document.createElement('canvas');
+                    const ctx = canvas.getContext('2d');
+                    
+                    // 종이 크기에 맞게 캔버스 설정
+                    const paper = paperSizes[paperSize];
+                    if (orientation === 'landscape') {
+                        canvas.width = paper.height;
+                        canvas.height = paper.width;
+                    } else {
+                        canvas.width = paper.width;
+                        canvas.height = paper.height;
+                    }
+                    
+                    // 배경 흰색으로 설정
+                    ctx.fillStyle = 'white';
+                    ctx.fillRect(0, 0, canvas.width, canvas.height);
+                    
+                    // 이미지 크기 계산 및 그리기
+                    const { x, y, width, height } = calculateImageSize(img, canvas.width, canvas.height);
+                    ctx.drawImage(img, x, y, width, height);
+                    
+                    // 이미지 데이터 가져오기
+                    const imageData = ctx.getImageData(0, 0, canvas.width, canvas.height);
+                    
+                    // 이미지 처리
+                    const processedData = applyImageProcessing(imageData, threshold, lineWidth);
+                    
+                    // 결과 적용
+                    ctx.putImageData(processedData, 0, 0);
+                    
+                    // 색칠 가이드 추가
+                    addColoringGuide(ctx, canvas.width, canvas.height, img, paper.name, orientation);
+                    
+                    resolve(canvas);
+                } catch (error) {
+                    reject(error);
+                }
+            });
+        }
+
+        async function downloadAllBatchResults() {
+            if (!window.batchResults || window.batchResults.length === 0) {
+                alert('다운로드할 결과가 없습니다.');
+                return;
+            }
+
+            // JSZip 라이브러리가 없으므로 각각 개별 다운로드
+            for (let i = 0; i < window.batchResults.length; i++) {
+                const result = window.batchResults[i];
+                if (result.status === 'completed' && result.canvas) {
+                    setTimeout(() => {
+                        downloadCanvas(result.canvas, `coloring_book_${result.fileName}.png`);
+                    }, i * 500); // 500ms 간격으로 다운로드
+                }
+            }
+        }
+
+        function downloadCanvas(canvas, filename) {
+            const link = document.createElement('a');
+            link.download = filename;
+            link.href = canvas.toDataURL();
+            link.click();
         }
 
         function switchMode(mode) {
@@ -1161,9 +1496,17 @@
         function displayUploadedImages() {
             const uploadImageGrid = document.getElementById('uploadImageGrid');
             const uploadImageCount = document.getElementById('uploadImageCount');
+            const batchProcessBtn = document.getElementById('uploadBatchProcessBtn');
             
             uploadImageGrid.innerHTML = '';
             uploadImageCount.textContent = `총 ${uploadedImages.length}개 이미지`;
+
+            // 배치 처리 버튼 표시/숨김 (2개 이상일 때만 표시)
+            if (uploadedImages.length >= 2) {
+                batchProcessBtn.style.display = 'inline-block';
+            } else {
+                batchProcessBtn.style.display = 'none';
+            }
 
             uploadedImages.forEach((imageInfo, index) => {
                 const imageDiv = document.createElement('div');
