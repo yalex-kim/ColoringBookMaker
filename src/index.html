@@ -149,6 +149,7 @@
                         <p style="font-weight: bold; margin-bottom: 10px;">🔗 예시 이미지 URL:</p>
                         <div class="example-urls">
                             <span class="example-url" onclick="setExampleUrl('https://pokemonkorea.co.kr/pokedex')">Pokemon Korea</span>
+                            <span class="example-url" onclick="setExampleUrl('http://sanriokorea.co.kr/character/cinnamoroll/')">Sanrio 시나모롤</span>
                         </div>
                         
                         <p style="font-size: 0.9em; color: #888; margin-top: 10px;">
@@ -583,7 +584,14 @@
                 const baseUrl = baseUrlObj.origin;
                 
                 for (let img of imgElements) {
-                    let src = img.src || img.getAttribute('data-src') || img.getAttribute('data-lazy') || img.getAttribute('data-srcset');
+                    let src = img.src || 
+                             img.getAttribute('data-src') || 
+                             img.getAttribute('data-lazy') || 
+                             img.getAttribute('data-srcset') ||
+                             img.getAttribute('data-original') ||
+                             img.getAttribute('data-img') ||
+                             img.getAttribute('data-load-src') ||
+                             img.getAttribute('data-url');
                     
                     if (src) {
                         // data-srcset 처리 (첫 번째 URL만 사용)
@@ -614,6 +622,36 @@
                     if (galleryLoading) {
                 galleryLoading.style.display = 'none';
             }
+                }
+
+                // CSS background-image도 체크
+                const allElements = doc.querySelectorAll('*');
+                for (let element of allElements) {
+                    const computedStyle = element.style;
+                    const backgroundImage = computedStyle.backgroundImage || element.getAttribute('style');
+                    
+                    if (backgroundImage && backgroundImage.includes('url(')) {
+                        const urlMatch = backgroundImage.match(/url\(['"]?([^'"()]+)['"]?\)/);
+                        if (urlMatch && urlMatch[1] && images.length < 50) {
+                            let bgSrc = urlMatch[1];
+                            
+                            // 상대 경로를 절대 경로로 변환
+                            if (bgSrc.startsWith('//')) {
+                                bgSrc = 'https:' + bgSrc;
+                            } else if (bgSrc.startsWith('/')) {
+                                bgSrc = baseUrl + bgSrc;
+                            } else if (!bgSrc.startsWith('http')) {
+                                bgSrc = baseUrl + '/' + bgSrc;
+                            }
+                            
+                            if (isValidImageSrc(bgSrc) && !images.some(item => item.url === bgSrc)) {
+                                images.push({
+                                    url: bgSrc,
+                                    alt: `Background Image ${images.length + 1}`
+                                });
+                            }
+                        }
+                    }
                 }
 
                 if (images.length === 0) {
