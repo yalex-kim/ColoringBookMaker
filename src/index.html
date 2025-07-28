@@ -32,9 +32,100 @@
                 <div class="upload-box" id="uploadBox">
                     <div class="upload-icon">📁</div>
                     <h3>이미지 파일 업로드</h3>
-                    <p>클릭하거나 파일을 드래그해서 업로드하세요</p>
+                    <p>클릭하거나 파일을 드래그해서 업로드하세요 (여러 파일 선택 가능)</p>
                     <p class="file-info">지원 형식: JPG, PNG, GIF, WEBP</p>
-                    <input type="file" id="fileInput" accept="image/*" hidden>
+                    <input type="file" id="fileInput" accept="image/*" multiple hidden>
+                </div>
+                
+                <!-- 업로드된 파일 작업 공간 (갤러리 + 미리보기) -->
+                <div id="uploadWorkspace" class="web-workspace" style="display: none;">
+                    <div class="workspace-container">
+                        <!-- 왼쪽: 업로드된 이미지 갤러리 (1/3) -->
+                        <div class="gallery-panel">
+                            <div class="gallery-header">
+                                <h3>📁 업로드된 이미지들</h3>
+                                <p id="uploadImageCount" style="color: #888; font-size: 0.9em; margin-bottom: 8px;">업로드된 이미지 없음</p>
+                                <p style="color: #666; margin: 0; font-size: 0.9em;">원하는 이미지를 클릭하여 선택하세요</p>
+                            </div>
+                            <div class="gallery-scrollable">
+                                <div id="uploadImageGrid" class="image-grid-compact"></div>
+                            </div>
+                        </div>
+
+                        <!-- 오른쪽: 선택된 이미지 미리보기 및 변환 (2/3) -->
+                        <div class="preview-panel">
+                            <!-- 선택된 이미지 미리보기 -->
+                            <div id="uploadSelectedImagePreview" class="selected-preview" style="display: none;">
+                                <h3>📷 선택된 이미지</h3>
+                                <div class="image-display">
+                                    <img id="uploadSelectedImage" alt="선택된 이미지">
+                                </div>
+                            </div>
+
+                            <!-- 업로드 이미지 설정 옵션 -->
+                            <div id="uploadControlsSection" class="web-controls-section" style="display: none;">
+                                <h3>⚙️ 변환 설정</h3>
+                                <div class="controls-grid-compact">
+                                    <div class="control-group">
+                                        <label for="uploadThreshold">윤곽선 민감도:</label>
+                                        <div class="slider-group">
+                                            <input type="range" id="uploadThreshold" min="50" max="200" value="128">
+                                            <span id="uploadThresholdValue">128</span>
+                                        </div>
+                                    </div>
+                                    
+                                    <div class="control-group">
+                                        <label for="uploadLineWidth">선 굵기:</label>
+                                        <div class="slider-group">
+                                            <input type="range" id="uploadLineWidth" min="1" max="5" value="1">
+                                            <span id="uploadLineWidthValue">1</span>
+                                        </div>
+                                    </div>
+                                    
+                                    <div class="control-group">
+                                        <label for="uploadPaperSize">📄 종이 사이즈:</label>
+                                        <select id="uploadPaperSize">
+                                            <option value="a4">A4 (210×297mm)</option>
+                                            <option value="a5">A5 (148×210mm)</option>
+                                            <option value="b4">B4 (250×353mm)</option>
+                                            <option value="b5">B5 (176×250mm)</option>
+                                            <option value="5x7">5×7 인화용 (5×7")</option>
+                                            <option value="4x6">4×6 인화용 (4×6")</option>
+                                        </select>
+                                    </div>
+                                    
+                                    <div class="control-group">
+                                        <label for="uploadOrientation">🔄 방향:</label>
+                                        <select id="uploadOrientation">
+                                            <option value="portrait">세로 (Portrait)</option>
+                                            <option value="landscape">가로 (Landscape)</option>
+                                        </select>
+                                    </div>
+                                    
+                                    <div class="control-group">
+                                        <div class="checkbox-group">
+                                            <input type="checkbox" id="uploadIncludeGuide" checked>
+                                            <label for="uploadIncludeGuide">🌈 색칠 가이드 포함</label>
+                                        </div>
+                                    </div>
+                                </div>
+                                
+                                <div class="web-action-buttons">
+                                    <button id="uploadProcessBtn" class="primary-btn">🎨 컬러링북 변환</button>
+                                </div>
+                            </div>
+                            
+                            <div id="uploadConvertedImageResult" class="converted-result" style="display: none;">
+                                <h3>🎨 변환된 컬러링북</h3>
+                                <div class="image-display">
+                                    <canvas id="uploadConvertedCanvas"></canvas>
+                                </div>
+                                <div class="result-actions">
+                                    <button id="uploadDownloadBtn" class="primary-btn">📥 다운로드</button>
+                                </div>
+                            </div>
+                        </div>
+                    </div>
                 </div>
             </div>
         </div>
@@ -331,8 +422,27 @@
             });
 
             document.getElementById('fileInput').addEventListener('change', function(e) {
-                const file = e.target.files[0];
-                if (file) handleFile(file);
+                const files = Array.from(e.target.files);
+                if (files.length > 0) handleMultipleFiles(files);
+            });
+
+            // 드래그 앤 드롭 지원
+            const uploadBox = document.getElementById('uploadBox');
+            uploadBox.addEventListener('dragover', (e) => {
+                e.preventDefault();
+                uploadBox.classList.add('dragover');
+            });
+
+            uploadBox.addEventListener('dragleave', (e) => {
+                e.preventDefault();
+                uploadBox.classList.remove('dragover');
+            });
+
+            uploadBox.addEventListener('drop', (e) => {
+                e.preventDefault();
+                uploadBox.classList.remove('dragover');
+                const files = Array.from(e.dataTransfer.files).filter(file => file.type.startsWith('image/'));
+                if (files.length > 0) handleMultipleFiles(files);
             });
 
             // 웹 이미지 로드
@@ -354,6 +464,17 @@
             const webProcessBtn = document.getElementById('webProcessBtn');
             if (webProcessBtn) {
                 webProcessBtn.addEventListener('click', processWebImage);
+            }
+
+            // 업로드 컨트롤 이벤트
+            const uploadProcessBtn = document.getElementById('uploadProcessBtn');
+            if (uploadProcessBtn) {
+                uploadProcessBtn.addEventListener('click', processUploadImage);
+            }
+
+            const uploadDownloadBtn = document.getElementById('uploadDownloadBtn');
+            if (uploadDownloadBtn) {
+                uploadDownloadBtn.addEventListener('click', downloadUploadResult);
             }
         }
 
@@ -390,7 +511,11 @@
                 'webControlsSection',
                 'convertedImageResult',
                 'imageLoadingStatus',
-                'aiResults'
+                'aiResults',
+                'uploadWorkspace',
+                'uploadSelectedImagePreview',
+                'uploadControlsSection',
+                'uploadConvertedImageResult'
             ];
             
             sectionsToHide.forEach(sectionId => {
@@ -426,6 +551,21 @@
             const generatedImages = document.getElementById('generatedImages');
             if (generatedImages) {
                 generatedImages.innerHTML = '';
+            }
+
+            // 업로드된 이미지 갤러리 초기화
+            const uploadImageGrid = document.getElementById('uploadImageGrid');
+            if (uploadImageGrid) {
+                uploadImageGrid.innerHTML = '';
+            }
+
+            // 업로드된 이미지 배열 초기화
+            uploadedImages = [];
+
+            // 업로드 이미지 카운트 초기화
+            const uploadImageCount = document.getElementById('uploadImageCount');
+            if (uploadImageCount) {
+                uploadImageCount.textContent = '업로드된 이미지 없음';
             }
 
             console.log('모든 UI 상태 초기화 완료');
@@ -974,31 +1114,268 @@
                     webLineWidthValue.textContent = this.value;
                 });
             }
+
+            // 업로드 슬라이더
+            const uploadThreshold = document.getElementById('uploadThreshold');
+            const uploadThresholdValue = document.getElementById('uploadThresholdValue');
+            const uploadLineWidth = document.getElementById('uploadLineWidth');
+            const uploadLineWidthValue = document.getElementById('uploadLineWidthValue');
+            
+            if (uploadThreshold && uploadThresholdValue) {
+                uploadThreshold.addEventListener('input', function() {
+                    uploadThresholdValue.textContent = this.value;
+                });
+            }
+            
+            if (uploadLineWidth && uploadLineWidthValue) {
+                uploadLineWidth.addEventListener('input', function() {
+                    uploadLineWidthValue.textContent = this.value;
+                });
+            }
+        }
+
+        let uploadedImages = []; // 업로드된 이미지들을 저장할 배열
+
+        function handleMultipleFiles(files) {
+            console.log(`${files.length}개 파일 업로드 시작`);
+            let validFiles = [];
+
+            // 파일 유효성 검사
+            for (let file of files) {
+                if (!file.type.startsWith('image/')) {
+                    alert(`${file.name}은(는) 이미지 파일이 아닙니다.`);
+                    continue;
+                }
+
+                if (file.size > 10 * 1024 * 1024) {
+                    alert(`${file.name}의 파일 크기가 너무 큽니다. 10MB 이하의 파일만 업로드 가능합니다.`);
+                    continue;
+                }
+
+                validFiles.push(file);
+            }
+
+            if (validFiles.length === 0) {
+                return;
+            }
+
+            // 업로드된 이미지 배열 초기화
+            uploadedImages = [];
+            const uploadImageGrid = document.getElementById('uploadImageGrid');
+            uploadImageGrid.innerHTML = '';
+
+            let loadedCount = 0;
+            const totalCount = validFiles.length;
+
+            // 각 파일을 읽어서 이미지로 변환
+            validFiles.forEach((file, index) => {
+                const reader = new FileReader();
+                reader.onload = function(e) {
+                    const img = new Image();
+                    img.onload = function() {
+                        uploadedImages.push({
+                            image: img,
+                            name: file.name,
+                            size: file.size,
+                            dataUrl: e.target.result
+                        });
+
+                        loadedCount++;
+                        if (loadedCount === totalCount) {
+                            displayUploadedImages();
+                            showUploadWorkspace();
+                        }
+                    };
+                    img.src = e.target.result;
+                };
+                reader.readAsDataURL(file);
+            });
+        }
+
+        function displayUploadedImages() {
+            const uploadImageGrid = document.getElementById('uploadImageGrid');
+            const uploadImageCount = document.getElementById('uploadImageCount');
+            
+            uploadImageGrid.innerHTML = '';
+            uploadImageCount.textContent = `총 ${uploadedImages.length}개 이미지`;
+
+            uploadedImages.forEach((imageInfo, index) => {
+                const imageDiv = document.createElement('div');
+                imageDiv.className = 'gallery-image';
+                
+                const img = document.createElement('img');
+                img.src = imageInfo.dataUrl;
+                img.alt = imageInfo.name;
+                
+                const infoDiv = document.createElement('div');
+                infoDiv.className = 'image-info';
+                infoDiv.textContent = `${index + 1}`;
+
+                imageDiv.addEventListener('click', () => {
+                    selectUploadedImage(imageInfo);
+                });
+
+                imageDiv.appendChild(img);
+                imageDiv.appendChild(infoDiv);
+                uploadImageGrid.appendChild(imageDiv);
+            });
+
+            console.log(`${uploadedImages.length}개 업로드된 이미지 표시 완료`);
+        }
+
+        function showUploadWorkspace() {
+            const uploadWorkspace = document.getElementById('uploadWorkspace');
+            if (uploadWorkspace) {
+                uploadWorkspace.style.display = 'block';
+                console.log('업로드 워크스페이스 표시');
+            }
+        }
+
+        function selectUploadedImage(imageInfo) {
+            console.log('업로드된 이미지 선택:', imageInfo.name);
+            currentImage = imageInfo.image;
+            
+            // 선택된 이미지 미리보기 표시
+            const uploadSelectedImagePreview = document.getElementById('uploadSelectedImagePreview');
+            const uploadSelectedImage = document.getElementById('uploadSelectedImage');
+            const uploadControlsSection = document.getElementById('uploadControlsSection');
+            
+            if (uploadSelectedImagePreview && uploadSelectedImage) {
+                uploadSelectedImage.src = imageInfo.dataUrl;
+                uploadSelectedImagePreview.style.display = 'block';
+                console.log('선택된 업로드 이미지 표시됨');
+            }
+
+            // 컨트롤 섹션 표시
+            if (uploadControlsSection) {
+                uploadControlsSection.style.display = 'block';
+                console.log('업로드 컨트롤 섹션 표시됨');
+            }
+        }
+
+        function processUploadImage() {
+            if (!currentImage) {
+                alert('이미지를 먼저 선택해주세요.');
+                return;
+            }
+
+            console.log('업로드 이미지 처리 시작');
+
+            try {
+                // 업로드 컨트롤에서 설정값 가져오기
+                const threshold = parseInt(document.getElementById('uploadThreshold').value);
+                const lineWidth = parseInt(document.getElementById('uploadLineWidth').value);
+                const paperSize = document.getElementById('uploadPaperSize').value;
+                const orientation = document.getElementById('uploadOrientation').value;
+                const includeGuide = document.getElementById('uploadIncludeGuide').checked;
+
+                console.log('설정값:', { threshold, lineWidth, paperSize, orientation, includeGuide });
+
+                // 종이 사이즈에 맞게 캔버스 크기 조정
+                const paper = paperSizes[paperSize];
+                if (!paper) {
+                    console.error('종이 사이즈를 찾을 수 없습니다:', paperSize);
+                    return;
+                }
+
+                let canvasWidth, canvasHeight;
+                
+                if (orientation === 'landscape') {
+                    canvasWidth = paper.height;
+                    canvasHeight = paper.width;
+                } else {
+                    canvasWidth = paper.width;
+                    canvasHeight = paper.height;
+                }
+
+                const canvas = document.getElementById('uploadConvertedCanvas');
+                if (!canvas) {
+                    console.error('uploadConvertedCanvas 요소를 찾을 수 없습니다');
+                    return;
+                }
+
+                const ctx = canvas.getContext('2d');
+                
+                // 이미지 비율에 맞게 크기 조정
+                const imgRatio = currentImage.width / currentImage.height;
+                const canvasRatio = canvasWidth / canvasHeight;
+                
+                let drawWidth, drawHeight, offsetX = 0, offsetY = 0;
+                
+                if (imgRatio > canvasRatio) {
+                    drawWidth = canvasWidth * 0.9; // 여백 10%
+                    drawHeight = drawWidth / imgRatio;
+                    offsetY = (canvasHeight - drawHeight) / 2;
+                    offsetX = canvasWidth * 0.05;
+                } else {
+                    drawHeight = canvasHeight * 0.9; // 여백 10%
+                    drawWidth = drawHeight * imgRatio;
+                    offsetX = (canvasWidth - drawWidth) / 2;
+                    offsetY = canvasHeight * 0.05;
+                }
+
+                canvas.width = canvasWidth;
+                canvas.height = canvasHeight;
+
+                // 흰색 배경
+                ctx.fillStyle = 'white';
+                ctx.fillRect(0, 0, canvasWidth, canvasHeight);
+
+                // 이미지 그리기
+                ctx.drawImage(currentImage, offsetX, offsetY, drawWidth, drawHeight);
+
+                // 이미지 처리
+                const imageData = ctx.getImageData(offsetX, offsetY, drawWidth, drawHeight);
+                const processedData = applyImageProcessing(imageData, threshold, lineWidth);
+                
+                ctx.putImageData(processedData, offsetX, offsetY);
+
+                // 색칠 가이드 추가
+                if (includeGuide) {
+                    addColoringGuide(ctx, canvasWidth, canvasHeight, currentImage, paper.name, orientation);
+                }
+
+                // 변환된 결과 표시
+                const resultSection = document.getElementById('uploadConvertedImageResult');
+                if (resultSection) {
+                    resultSection.style.display = 'block';
+                    
+                    // 결과 섹션으로 부드럽게 스크롤
+                    setTimeout(() => {
+                        resultSection.scrollIntoView({ 
+                            behavior: 'smooth', 
+                            block: 'start',
+                            inline: 'nearest'
+                        });
+                    }, 100);
+                }
+
+                console.log('업로드 이미지 처리 완료');
+            } catch (error) {
+                console.error('업로드 이미지 처리 중 오류:', error);
+                alert('이미지 처리 중 오류가 발생했습니다: ' + error.message);
+            }
+        }
+
+        function downloadUploadResult() {
+            const canvas = document.getElementById('uploadConvertedCanvas');
+            if (!canvas) {
+                alert('처리된 이미지가 없습니다.');
+                return;
+            }
+
+            const paperSize = document.getElementById('uploadPaperSize').value;
+            const orientation = document.getElementById('uploadOrientation').value;
+            const link = document.createElement('a');
+            link.download = `coloring-book-upload-${paperSize}-${orientation}-${Date.now()}.png`;
+            link.href = canvas.toDataURL();
+            link.click();
+            console.log('업로드 결과 다운로드 완료');
         }
 
         function handleFile(file) {
-            if (!file.type.startsWith('image/')) {
-                alert('이미지 파일만 업로드 가능합니다.');
-                return;
-            }
-
-            if (file.size > 10 * 1024 * 1024) {
-                alert('파일 크기가 너무 큽니다. 10MB 이하의 파일만 업로드 가능합니다.');
-                return;
-            }
-
-            const reader = new FileReader();
-            reader.onload = function(e) {
-                const img = new Image();
-                img.onload = function() {
-                    currentImage = img;
-                    showPreview(img);
-                    showControls();
-                    console.log('이미지 로드 완료:', file.name);
-                };
-                img.src = e.target.result;
-            };
-            reader.readAsDataURL(file);
+            // 기존 단일 파일 처리 함수는 이제 handleMultipleFiles를 호출
+            handleMultipleFiles([file]);
         }
 
         function showPreview(img) {
