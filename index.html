@@ -307,75 +307,6 @@
             </div>
         </div>
 
-        <!-- 이미지 미리보기 영역 -->
-        <div id="previewSection" class="preview-section" style="display: none;">
-            <h3>원본 이미지</h3>
-            <div class="image-container">
-                <img id="previewImage" alt="미리보기">
-            </div>
-        </div>
-
-        <!-- 컨트롤 영역 -->
-        <div id="controlsSection" class="controls-section" style="display: none;">
-            <div class="controls-grid">
-                <div class="control-group">
-                    <label for="threshold">윤곽선 민감도:</label>
-                    <div class="slider-group">
-                        <input type="range" id="threshold" min="50" max="200" value="128">
-                        <span id="thresholdValue">128</span>
-                    </div>
-                </div>
-                
-                <div class="control-group">
-                    <label for="lineWidth">선 굵기:</label>
-                    <div class="slider-group">
-                        <input type="range" id="lineWidth" min="1" max="5" value="1">
-                        <span id="lineWidthValue">1</span>
-                    </div>
-                </div>
-                
-                <div class="control-group">
-                    <label for="paperSize">📄 종이 사이즈:</label>
-                    <select id="paperSize">
-                        <option value="a4">A4 (210×297mm)</option>
-                        <option value="a5">A5 (148×210mm)</option>
-                        <option value="b4">B4 (250×353mm)</option>
-                        <option value="b5">B5 (176×250mm)</option>
-                        <option value="5x7">5×7 인화용 (5×7")</option>
-                        <option value="4x6">4×6 인화용 (4×6")</option>
-                    </select>
-                </div>
-                
-                <div class="control-group">
-                    <label for="orientation">🔄 방향:</label>
-                    <select id="orientation">
-                        <option value="portrait">세로 (Portrait)</option>
-                        <option value="landscape">가로 (Landscape)</option>
-                    </select>
-                </div>
-                
-                <div class="control-group">
-                    <div class="checkbox-group">
-                        <input type="checkbox" id="includeGuide" checked>
-                        <label for="includeGuide">🌈 색칠 가이드 포함</label>
-                    </div>
-                </div>
-            </div>
-            
-            <div class="action-buttons">
-                <button id="processBtn" class="primary-btn">컬러링북 변환</button>
-                <button id="resetBtn" class="secondary-btn">초기화</button>
-            </div>
-        </div>
-
-        <!-- 결과 영역 -->
-        <div id="resultSection" class="result-section" style="display: none;">
-            <h3>컬러링북 결과</h3>
-            <div class="image-container">
-                <canvas id="resultCanvas"></canvas>
-            </div>
-            <button id="downloadBtn" class="primary-btn">다운로드</button>
-        </div>
 
         <!-- 로딩 표시 -->
         <div id="loadingOverlay" class="loading-overlay" style="display: none;">
@@ -456,10 +387,7 @@
                 }
             });
 
-            // 버튼 이벤트
-            document.getElementById('processBtn').addEventListener('click', processImage);
-            document.getElementById('resetBtn').addEventListener('click', resetApp);
-            document.getElementById('downloadBtn').addEventListener('click', downloadResult);
+            // 기존 버튼 이벤트 제거 (새로운 업로드 UI에서는 사용하지 않음)
             
             // 웹 컨트롤 이벤트
             const webProcessBtn = document.getElementById('webProcessBtn');
@@ -504,9 +432,6 @@
             
             // 모든 섹션 숨기기
             const sectionsToHide = [
-                'previewSection',
-                'controlsSection', 
-                'resultSection',
                 'webWorkspace',
                 'selectedImagePreview',
                 'webControlsSection',
@@ -1081,22 +1006,7 @@
         }
 
         function setupSliders() {
-            const threshold = document.getElementById('threshold');
-            const thresholdValue = document.getElementById('thresholdValue');
-            const lineWidth = document.getElementById('lineWidth');
-            const lineWidthValue = document.getElementById('lineWidthValue');
-            
-            if (threshold && thresholdValue) {
-                threshold.addEventListener('input', function() {
-                    thresholdValue.textContent = this.value;
-                });
-            }
-
-            if (lineWidth && lineWidthValue) {
-                lineWidth.addEventListener('input', function() {
-                    lineWidthValue.textContent = this.value;
-                });
-            }
+            // 기존 슬라이더 제거됨 - 새로운 업로드 UI에서는 각 모드별 슬라이더 사용
 
             // 웹 슬라이더
             const webThreshold = document.getElementById('webThreshold');
@@ -1383,18 +1293,7 @@
             handleMultipleFiles([file]);
         }
 
-        function showPreview(img) {
-            const previewSection = document.getElementById('previewSection');
-            const previewImage = document.getElementById('previewImage');
-            
-            if (previewSection && previewImage) {
-                previewImage.src = img.src;
-                previewSection.style.display = 'block';
-                console.log('미리보기 표시됨:', img.src);
-            } else {
-                console.error('미리보기 요소를 찾을 수 없습니다');
-            }
-        }
+        // showPreview 함수 제거됨 - 새로운 갤러리 UI 사용
 
         function showImageLoadingStatus() {
             const loadingStatus = document.getElementById('imageLoadingStatus');
@@ -1452,22 +1351,10 @@
         }
 
         function showControls() {
-            // 현재 활성 모드 확인
-            const activeMode = document.querySelector('.mode-content.active').id;
-            
-            if (activeMode === 'upload-mode') {
-                // 파일 업로드 모드: 기본 컨트롤 섹션 표시
-                const controlsSection = document.getElementById('controlsSection');
-                if (controlsSection) {
-                    controlsSection.style.display = 'block';
-                    console.log('파일 업로드 모드: 컨트롤 섹션 표시됨');
-                } else {
-                    console.error('controlsSection 요소를 찾을 수 없습니다');
-                }
-            } else if (activeMode === 'web-mode') {
-                // 웹 이미지 모드: 웹 컨트롤 섹션은 이미 showSelectedImage에서 처리됨
-                console.log('웹 이미지 모드: 이미지 선택 완료, 설정 후 변환 버튼을 클릭하세요');
-            }
+            // showControls 함수는 더 이상 사용하지 않음
+            // 파일 업로드 모드는 새로운 갤러리 UI에서 자체적으로 컨트롤 처리
+            // 웹 이미지 모드는 showSelectedImage에서 컨트롤 처리
+            console.log('showControls 호출됨 - 새로운 UI에서는 각 모드별로 컨트롤 처리');
         }
 
         function processWebImage() {
@@ -1632,77 +1519,7 @@
             console.log('이미지 변환 완료');
         }
 
-        function processImage() {
-            if (!currentImage) {
-                alert('이미지를 먼저 선택해주세요.');
-                return;
-            }
-
-            console.log('이미지 처리 시작');
-
-            const threshold = parseInt(document.getElementById('threshold').value);
-            const lineWidth = parseInt(document.getElementById('lineWidth').value);
-            const paperSize = document.getElementById('paperSize').value;
-            const orientation = document.getElementById('orientation').value;
-            const includeGuide = document.getElementById('includeGuide').checked;
-
-            // 종이 사이즈에 맞게 캔버스 크기 조정
-            const paper = paperSizes[paperSize];
-            let canvasWidth, canvasHeight;
-            
-            if (orientation === 'landscape') {
-                canvasWidth = paper.height;
-                canvasHeight = paper.width;
-            } else {
-                canvasWidth = paper.width;
-                canvasHeight = paper.height;
-            }
-
-            const canvas = document.createElement('canvas');
-            const ctx = canvas.getContext('2d');
-            
-            // 이미지 비율에 맞게 크기 조정
-            const imgRatio = currentImage.width / currentImage.height;
-            const canvasRatio = canvasWidth / canvasHeight;
-            
-            let drawWidth, drawHeight, offsetX = 0, offsetY = 0;
-            
-            if (imgRatio > canvasRatio) {
-                drawWidth = canvasWidth * 0.9; // 여백 10%
-                drawHeight = drawWidth / imgRatio;
-                offsetY = (canvasHeight - drawHeight) / 2;
-                offsetX = canvasWidth * 0.05;
-            } else {
-                drawHeight = canvasHeight * 0.9; // 여백 10%
-                drawWidth = drawHeight * imgRatio;
-                offsetX = (canvasWidth - drawWidth) / 2;
-                offsetY = canvasHeight * 0.05;
-            }
-
-            canvas.width = canvasWidth;
-            canvas.height = canvasHeight;
-
-            // 흰색 배경
-            ctx.fillStyle = 'white';
-            ctx.fillRect(0, 0, canvasWidth, canvasHeight);
-
-            // 이미지 그리기
-            ctx.drawImage(currentImage, offsetX, offsetY, drawWidth, drawHeight);
-
-            // 이미지 처리
-            const imageData = ctx.getImageData(offsetX, offsetY, drawWidth, drawHeight);
-            const processedData = applyImageProcessing(imageData, threshold, lineWidth);
-            
-            ctx.putImageData(processedData, offsetX, offsetY);
-
-            // 색칠 가이드 추가 (원본 이미지를 작게 표시)
-            if (includeGuide) {
-                addColoringGuide(ctx, canvasWidth, canvasHeight, currentImage, paper.name, orientation);
-            }
-
-            showResult(canvas);
-            console.log('이미지 처리 완료');
-        }
+        // processImage 함수 제거됨 - 새로운 UI에서는 processUploadImage와 processWebImage 사용
 
         function applyImageProcessing(imageData, threshold, lineWidth) {
             const data = new Uint8ClampedArray(imageData.data);
@@ -1844,43 +1661,7 @@
             ctx.textAlign = 'left';
         }
 
-        function showResult(canvas) {
-            const resultSection = document.getElementById('resultSection');
-            const resultCanvas = document.getElementById('resultCanvas');
-            
-            resultCanvas.width = canvas.width;
-            resultCanvas.height = canvas.height;
-            const ctx = resultCanvas.getContext('2d');
-            ctx.drawImage(canvas, 0, 0);
-            
-            resultSection.style.display = 'block';
-            resultSection.scrollIntoView({ behavior: 'smooth' });
-        }
-
-        function downloadResult() {
-            const canvas = document.getElementById('resultCanvas');
-            if (!canvas) {
-                alert('처리된 이미지가 없습니다.');
-                return;
-            }
-
-            const paperSize = document.getElementById('paperSize').value;
-            const orientation = document.getElementById('orientation').value;
-            const link = document.createElement('a');
-            link.download = `coloring-book-${paperSize}-${orientation}-${Date.now()}.png`;
-            link.href = canvas.toDataURL();
-            link.click();
-            console.log('다운로드 완료');
-        }
-
-        function resetApp() {
-            currentImage = null;
-            document.getElementById('previewSection').style.display = 'none';
-            document.getElementById('controlsSection').style.display = 'none';
-            document.getElementById('resultSection').style.display = 'none';
-            document.getElementById('fileInput').value = '';
-            console.log('앱 리셋 완료');
-        }
+        // showResult, downloadResult, resetApp 함수 제거됨 - 새로운 UI에서는 사용하지 않음
 
         console.log('앱 로드 완료');
     </script>
