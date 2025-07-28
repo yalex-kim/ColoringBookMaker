@@ -5,6 +5,7 @@
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
     <title>컬러링북 메이커 - AI 이미지 생성 포함</title>
     <link rel="stylesheet" href="./styles/main.css">
+    <script async src="https://docs.opencv.org/4.8.0/opencv.js" onload="onOpenCvReady();" type="text/javascript"></script>
 </head>
 <body>
     <div class="container">
@@ -68,6 +69,7 @@
                                 <h3>⚙️ 변환 설정</h3>
                                 <div class="controls-grid-compact">
                                     <div class="control-group">
+                                        <div class="opencv-status" style="font-size: 0.8em; color: orange; margin-bottom: 5px;">OpenCV.js 로딩 중...</div>
                                         <label for="uploadThreshold">윤곽선 민감도:</label>
                                         <div class="slider-group">
                                             <input type="range" id="uploadThreshold" min="50" max="200" value="90">
@@ -200,6 +202,7 @@
                                 <h3>⚙️ 변환 설정</h3>
                                 <div class="controls-grid-compact">
                                     <div class="control-group">
+                                        <div class="opencv-status" style="font-size: 0.8em; color: orange; margin-bottom: 5px;">OpenCV.js 로딩 중...</div>
                                         <label for="webThreshold">윤곽선 민감도:</label>
                                         <div class="slider-group">
                                             <input type="range" id="webThreshold" min="50" max="200" value="90">
@@ -326,6 +329,20 @@
         };
 
         let currentImage = null;
+        let openCvReady = false;
+
+        // OpenCV.js 초기화
+        function onOpenCvReady() {
+            openCvReady = true;
+            console.log('OpenCV.js가 로드되었습니다. 버전:', cv.getBuildInformation());
+            
+            // UI에 OpenCV 로드 상태 표시
+            const statusElements = document.querySelectorAll('.opencv-status');
+            statusElements.forEach(el => {
+                el.textContent = 'OpenCV.js 로드됨 ✅';
+                el.style.color = 'green';
+            });
+        }
 
         document.addEventListener('DOMContentLoaded', function() {
             initApp();
@@ -1556,11 +1573,101 @@
         // processImage 함수 제거됨 - 새로운 UI에서는 processUploadImage와 processWebImage 사용
 
         function applyImageProcessing(imageData, threshold, lineWidth) {
+            console.log('이미지 처리 시작:', { 
+                width: imageData.width, 
+                height: imageData.height, 
+                threshold, 
+                lineWidth,
+                openCvReady,
+                cvAvailable: typeof cv !== 'undefined'
+            });
+            
+            if (openCvReady && typeof cv !== 'undefined') {
+                console.log('OpenCV 처리 모드 사용');
+                return applyOpenCVProcessing(imageData, threshold, lineWidth);
+            } else {
+                // OpenCV가 로드되지 않은 경우 기존 알고리즘 사용
+                console.warn('OpenCV가 로드되지 않아 기본 알고리즘을 사용합니다.');
+                return applyBasicProcessing(imageData, threshold, lineWidth);
+            }
+        }
+
+        function applyOpenCVProcessing(imageData, threshold, lineWidth) {
+            try {
+                console.log('OpenCV 처리 시작');
+                const width = imageData.width;
+                const height = imageData.height;
+                
+                // ImageData를 OpenCV Mat으로 변환
+                console.log('Mat 생성 중...');
+                const src = cv.matFromImageData(imageData);
+                console.log('Mat 생성 완료:', src.size());
+                const gray = new cv.Mat();
+                const blurred = new cv.Mat();
+                const edges = new cv.Mat();
+                const result = new cv.Mat();
+                
+                // 1. 그레이스케일 변환
+                console.log('1. 그레이스케일 변환 중...');
+                cv.cvtColor(src, gray, cv.COLOR_RGBA2GRAY);
+                
+                // 2. 가우시안 블러 (노이즈 제거)
+                console.log('2. 가우시안 블러 적용 중...');
+                const kernelSize = 5;
+                cv.GaussianBlur(gray, blurred, new cv.Size(kernelSize, kernelSize), 1.4, 1.4);
+                
+                // 3. Canny 엣지 검출
+                const lowThreshold = Math.max(10, threshold * 0.4);
+                const highThreshold = Math.min(255, threshold * 1.2);
+                console.log('3. Canny 엣지 검출 중...', { lowThreshold, highThreshold });
+                cv.Canny(blurred, edges, lowThreshold, highThreshold);
+                
+                // 4. 형태학적 연산 (선 정리)
+                console.log('4. 형태학적 연산 적용 중...', { lineWidth });
+                if (lineWidth > 1) {
+                    const kernel = cv.getStructuringElement(cv.MORPH_ELLIPSE, new cv.Size(lineWidth, lineWidth));
+                    cv.dilate(edges, result, kernel);
+                    kernel.delete();
+                } else {
+                    edges.copyTo(result);
+                }
+                
+                // 5. 색상 반전 (검은 배경에 흰 선 → 흰 배경에 검은 선)
+                console.log('5. 색상 반전 중...');
+                cv.bitwise_not(result, result);
+                
+                // 6. 컬러 이미지로 변환
+                console.log('6. 컬러 변환 중...');
+                const colorResult = new cv.Mat();
+                cv.cvtColor(result, colorResult, cv.COLOR_GRAY2RGBA);
+                
+                // Mat을 ImageData로 변환
+                console.log('7. ImageData로 변환 중...');
+                const outputImageData = new ImageData(new Uint8ClampedArray(colorResult.data), width, height);
+                console.log('OpenCV 처리 완료!');
+                
+                // 메모리 정리
+                src.delete();
+                gray.delete();
+                blurred.delete();
+                edges.delete();
+                result.delete();
+                colorResult.delete();
+                
+                return outputImageData;
+                
+            } catch (error) {
+                console.error('OpenCV 처리 중 오류 발생:', error);
+                return applyBasicProcessing(imageData, threshold, lineWidth);
+            }
+        }
+
+        function applyBasicProcessing(imageData, threshold, lineWidth) {
             const data = new Uint8ClampedArray(imageData.data);
             const width = imageData.width;
             const height = imageData.height;
 
-            // 그레이스케일 변환
+            // 1. 그레이스케일 변환
             for (let i = 0; i < data.length; i += 4) {
                 const gray = Math.round(0.299 * data[i] + 0.587 * data[i + 1] + 0.114 * data[i + 2]);
                 data[i] = gray;
@@ -1568,72 +1675,242 @@
                 data[i + 2] = gray;
             }
 
-            // 엣지 검출
-            const output = new Uint8ClampedArray(data.length);
+            // 2. 가우시안 블러 적용 (노이즈 제거)
+            const blurred = applyGaussianBlur(data, width, height, 1.0);
+
+            // 3. 개선된 엣지 검출 (Canny-like)
+            const edges = applyCannyllikeEdgeDetection(blurred, width, height, threshold);
+
+            // 4. 형태학적 연산 (선 정리)
+            const cleaned = applyMorphologicalOperations(edges, width, height);
+
+            // 5. 선 굵기 적용
+            let final = cleaned;
+            if (lineWidth > 1) {
+                final = applyLineThickening(cleaned, width, height, lineWidth);
+            }
+
+            return new ImageData(final, width, height);
+        }
+
+        function applyGaussianBlur(data, width, height, sigma) {
+            const blurred = new Uint8ClampedArray(data.length);
+            const kernelSize = Math.ceil(sigma * 3) * 2 + 1;
+            const kernel = [];
+            const center = Math.floor(kernelSize / 2);
+            
+            // 가우시안 커널 생성
+            let sum = 0;
+            for (let i = 0; i < kernelSize; i++) {
+                const x = i - center;
+                const value = Math.exp(-(x * x) / (2 * sigma * sigma));
+                kernel[i] = value;
+                sum += value;
+            }
+            
+            // 정규화
+            for (let i = 0; i < kernelSize; i++) {
+                kernel[i] /= sum;
+            }
+
+            // 수평 블러
+            for (let y = 0; y < height; y++) {
+                for (let x = 0; x < width; x++) {
+                    let value = 0;
+                    for (let k = 0; k < kernelSize; k++) {
+                        const px = Math.max(0, Math.min(width - 1, x + k - center));
+                        const idx = (y * width + px) * 4;
+                        value += data[idx] * kernel[k];
+                    }
+                    const idx = (y * width + x) * 4;
+                    blurred[idx] = blurred[idx + 1] = blurred[idx + 2] = Math.round(value);
+                    blurred[idx + 3] = 255;
+                }
+            }
+
+            // 수직 블러
+            const result = new Uint8ClampedArray(data.length);
+            for (let y = 0; y < height; y++) {
+                for (let x = 0; x < width; x++) {
+                    let value = 0;
+                    for (let k = 0; k < kernelSize; k++) {
+                        const py = Math.max(0, Math.min(height - 1, y + k - center));
+                        const idx = (py * width + x) * 4;
+                        value += blurred[idx] * kernel[k];
+                    }
+                    const idx = (y * width + x) * 4;
+                    result[idx] = result[idx + 1] = result[idx + 2] = Math.round(value);
+                    result[idx + 3] = 255;
+                }
+            }
+
+            return result;
+        }
+
+        function applyCannyllikeEdgeDetection(data, width, height, threshold) {
+            const edges = new Uint8ClampedArray(data.length);
+            
+            // Sobel 연산자
+            const sobelX = [[-1, 0, 1], [-2, 0, 2], [-1, 0, 1]];
+            const sobelY = [[-1, -2, -1], [0, 0, 0], [1, 2, 1]];
+            
+            const gradients = [];
+            const directions = [];
+
+            // 그래디언트 계산
+            for (let y = 1; y < height - 1; y++) {
+                for (let x = 1; x < width - 1; x++) {
+                    let gx = 0, gy = 0;
+                    
+                    for (let dy = -1; dy <= 1; dy++) {
+                        for (let dx = -1; dx <= 1; dx++) {
+                            const idx = ((y + dy) * width + (x + dx)) * 4;
+                            const intensity = data[idx];
+                            gx += intensity * sobelX[dy + 1][dx + 1];
+                            gy += intensity * sobelY[dy + 1][dx + 1];
+                        }
+                    }
+                    
+                    const magnitude = Math.sqrt(gx * gx + gy * gy);
+                    const direction = Math.atan2(gy, gx);
+                    
+                    gradients[y * width + x] = magnitude;
+                    directions[y * width + x] = direction;
+                }
+            }
+
+            // Non-maximum suppression (간소화된 버전)
+            for (let y = 1; y < height - 1; y++) {
+                for (let x = 1; x < width - 1; x++) {
+                    const idx = (y * width + x) * 4;
+                    const magnitude = gradients[y * width + x] || 0;
+                    
+                    if (magnitude > threshold) {
+                        // 인접 픽셀과 비교하여 극값인지 확인
+                        const neighbors = [
+                            gradients[(y-1) * width + (x-1)] || 0,
+                            gradients[(y-1) * width + x] || 0,
+                            gradients[(y-1) * width + (x+1)] || 0,
+                            gradients[y * width + (x-1)] || 0,
+                            gradients[y * width + (x+1)] || 0,
+                            gradients[(y+1) * width + (x-1)] || 0,
+                            gradients[(y+1) * width + x] || 0,
+                            gradients[(y+1) * width + (x+1)] || 0
+                        ];
+                        
+                        const isLocalMax = neighbors.every(n => magnitude >= n);
+                        
+                        if (isLocalMax) {
+                            edges[idx] = edges[idx + 1] = edges[idx + 2] = 0; // 검은색 (엣지)
+                        } else {
+                            edges[idx] = edges[idx + 1] = edges[idx + 2] = 255; // 흰색
+                        }
+                    } else {
+                        edges[idx] = edges[idx + 1] = edges[idx + 2] = 255; // 흰색
+                    }
+                    edges[idx + 3] = 255; // 알파
+                }
+            }
+
+            return edges;
+        }
+
+        function applyMorphologicalOperations(data, width, height) {
+            // 침식(erosion) 후 팽창(dilation)으로 노이즈 제거
+            const eroded = applyErosion(data, width, height);
+            const dilated = applyDilation(eroded, width, height);
+            return dilated;
+        }
+
+        function applyErosion(data, width, height) {
+            const result = new Uint8ClampedArray(data.length);
             
             for (let y = 1; y < height - 1; y++) {
                 for (let x = 1; x < width - 1; x++) {
                     const idx = (y * width + x) * 4;
                     
-                    let gx = 0, gy = 0;
-                    for (let dy = -1; dy <= 1; dy++) {
-                        for (let dx = -1; dx <= 1; dx++) {
-                            const pixelIdx = ((y + dy) * width + (x + dx)) * 4;
-                            const intensity = data[pixelIdx];
-                            
-                            if (dx === -1) gx -= intensity * (dy === 0 ? 2 : 1);
-                            if (dx === 1) gx += intensity * (dy === 0 ? 2 : 1);
-                            if (dy === -1) gy -= intensity * (dx === 0 ? 2 : 1);
-                            if (dy === 1) gy += intensity * (dx === 0 ? 2 : 1);
+                    // 3x3 커널에서 모든 픽셀이 검은색인지 확인
+                    let allBlack = true;
+                    for (let dy = -1; dy <= 1 && allBlack; dy++) {
+                        for (let dx = -1; dx <= 1 && allBlack; dx++) {
+                            const nIdx = ((y + dy) * width + (x + dx)) * 4;
+                            if (data[nIdx] > 128) allBlack = false;
                         }
                     }
                     
-                    const magnitude = Math.sqrt(gx * gx + gy * gy);
-                    const edge = magnitude > threshold ? 0 : 255;
-                    
-                    output[idx] = edge;
-                    output[idx + 1] = edge;
-                    output[idx + 2] = edge;
-                    output[idx + 3] = 255;
+                    if (allBlack) {
+                        result[idx] = result[idx + 1] = result[idx + 2] = 0;
+                    } else {
+                        result[idx] = result[idx + 1] = result[idx + 2] = 255;
+                    }
+                    result[idx + 3] = 255;
                 }
             }
+            return result;
+        }
 
-            // 선 굵기 적용
-            if (lineWidth > 1) {
-                const thickened = new Uint8ClampedArray(output.length);
-                for (let i = 0; i < thickened.length; i++) {
-                    thickened[i] = 255;
+        function applyDilation(data, width, height) {
+            const result = new Uint8ClampedArray(data.length);
+            
+            for (let y = 1; y < height - 1; y++) {
+                for (let x = 1; x < width - 1; x++) {
+                    const idx = (y * width + x) * 4;
+                    
+                    // 3x3 커널에서 하나라도 검은색이면 검은색으로
+                    let hasBlack = false;
+                    for (let dy = -1; dy <= 1 && !hasBlack; dy++) {
+                        for (let dx = -1; dx <= 1 && !hasBlack; dx++) {
+                            const nIdx = ((y + dy) * width + (x + dx)) * 4;
+                            if (data[nIdx] < 128) hasBlack = true;
+                        }
+                    }
+                    
+                    if (hasBlack) {
+                        result[idx] = result[idx + 1] = result[idx + 2] = 0;
+                    } else {
+                        result[idx] = result[idx + 1] = result[idx + 2] = 255;
+                    }
+                    result[idx + 3] = 255;
                 }
-                thickened[thickened.length - 1] = 255; // Alpha
+            }
+            return result;
+        }
 
-                for (let y = 0; y < height; y++) {
-                    for (let x = 0; x < width; x++) {
-                        const idx = (y * width + x) * 4;
-                        
-                        if (output[idx] === 0) {
-                            for (let dy = -lineWidth; dy <= lineWidth; dy++) {
-                                for (let dx = -lineWidth; dx <= lineWidth; dx++) {
-                                    const newX = x + dx;
-                                    const newY = y + dy;
-                                    
-                                    if (newX >= 0 && newX < width && newY >= 0 && newY < height) {
-                                        if (dx * dx + dy * dy <= lineWidth * lineWidth) {
-                                            const newIdx = (newY * width + newX) * 4;
-                                            thickened[newIdx] = 0;
-                                            thickened[newIdx + 1] = 0;
-                                            thickened[newIdx + 2] = 0;
-                                            thickened[newIdx + 3] = 255;
-                                        }
+        function applyLineThickening(data, width, height, lineWidth) {
+            const result = new Uint8ClampedArray(data.length);
+            
+            // 흰색으로 초기화
+            for (let i = 0; i < result.length; i += 4) {
+                result[i] = result[i + 1] = result[i + 2] = 255;
+                result[i + 3] = 255;
+            }
+
+            for (let y = 0; y < height; y++) {
+                for (let x = 0; x < width; x++) {
+                    const idx = (y * width + x) * 4;
+                    
+                    if (data[idx] < 128) { // 검은색 픽셀이면
+                        // 원형 브러시로 굵게 만들기
+                        for (let dy = -lineWidth; dy <= lineWidth; dy++) {
+                            for (let dx = -lineWidth; dx <= lineWidth; dx++) {
+                                const newX = x + dx;
+                                const newY = y + dy;
+                                
+                                if (newX >= 0 && newX < width && newY >= 0 && newY < height) {
+                                    const distance = Math.sqrt(dx * dx + dy * dy);
+                                    if (distance <= lineWidth) {
+                                        const newIdx = (newY * width + newX) * 4;
+                                        result[newIdx] = result[newIdx + 1] = result[newIdx + 2] = 0;
+                                        result[newIdx + 3] = 255;
                                     }
                                 }
                             }
                         }
                     }
                 }
-                return new ImageData(thickened, width, height);
             }
-
-            return new ImageData(output, width, height);
+            
+            return result;
         }
 
         function addColoringGuide(ctx, width, height, originalImage, paperName, orientation) {
