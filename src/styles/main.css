@@ -846,12 +846,19 @@ body {
     
     .mode-tabs {
         justify-content: center;
+        flex-wrap: wrap;
+        gap: 8px;
+        overflow-x: visible;
     }
     
     .mode-tab {
         min-width: auto;
-        padding: 12px 20px;
-        font-size: 1em;
+        flex: 1;
+        padding: 10px 8px;
+        font-size: 0.85em;
+        text-align: center;
+        min-width: 90px;
+        max-width: 120px;
     }
     
     .input-group {
@@ -944,6 +951,19 @@ body {
     .container {
         padding: 15px;
         margin: 5px;
+    }
+    
+    .mode-tabs {
+        gap: 5px;
+        margin-bottom: 20px;
+    }
+    
+    .mode-tab {
+        padding: 8px 4px;
+        font-size: 0.75em;
+        min-width: 70px;
+        max-width: 100px;
+        line-height: 1.2;
     }
     
     .upload-box {

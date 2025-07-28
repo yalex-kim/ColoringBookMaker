@@ -16,13 +16,13 @@
 
         <!-- 모드 선택 탭 -->
         <div class="mode-tabs">
-            <button class="mode-tab active" data-mode="upload">
+            <button class="mode-tab active" data-mode="upload" data-short="📁 업로드">
                 📁 파일 업로드
             </button>
-            <button class="mode-tab" data-mode="web">
+            <button class="mode-tab" data-mode="web" data-short="🌐 웹수집">
                 🌐 웹 이미지 수집
             </button>
-            <button class="mode-tab" data-mode="ai">
+            <button class="mode-tab" data-mode="ai" data-short="🤖 AI생성">
                 🤖 AI 이미지 생성
             </button>
         </div>
@@ -351,7 +351,29 @@
         function initApp() {
             setupEventListeners();
             setupSliders();
+            updateTabText(); // 초기 탭 텍스트 설정
             console.log('앱 초기화 완료');
+        }
+
+        // 화면 크기에 따른 탭 텍스트 업데이트
+        function updateTabText() {
+            const tabs = document.querySelectorAll('.mode-tab');
+            const isMobile = window.innerWidth <= 480;
+            
+            tabs.forEach(tab => {
+                const originalText = tab.textContent.trim();
+                const shortText = tab.dataset.short;
+                
+                if (isMobile && shortText) {
+                    tab.textContent = shortText;
+                } else {
+                    // 원래 텍스트 복원 (data-short가 없는 경우를 위한 처리)
+                    if (!tab.dataset.original) {
+                        tab.dataset.original = originalText;
+                    }
+                    tab.textContent = tab.dataset.original;
+                }
+            });
         }
 
         function setupEventListeners() {
@@ -425,6 +447,9 @@
             if (webDownloadBtn) {
                 webDownloadBtn.addEventListener('click', downloadWebResult);
             }
+
+            // 창 크기 변경 시 탭 텍스트 업데이트
+            window.addEventListener('resize', updateTabText);
         }
 
         function switchMode(mode) {
