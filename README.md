@@ -7,7 +7,7 @@ AI와 웹 기술을 활용한 현대적인 컬러링북 제작 도구입니다. 
 ### 🎨 3가지 이미지 입력 방식
 - **📁 파일 업로드**: 로컬 이미지 파일 직접 업로드 (드래그 앤 드롭 지원)
 - **🌐 웹 이미지 수집**: URL을 통한 웹 이미지 로드
-- **🤖 AI 이미지 생성**: Gemini AI를 활용한 컬러링북 최적화 이미지 생성
+- **🤖 AI 이미지 생성**: AI를 활용한 컬러링북 최적화 이미지 생성
 
 ### 🛠️ 고급 이미지 처리 (OpenCV.js 기반)
 - **Canny 엣지 검출**: OpenCV.js의 전문적인 엣지 검출 알고리즘
@@ -21,6 +21,7 @@ AI와 웹 기술을 활용한 현대적인 컬러링북 제작 도구입니다. 
 - **스마트 프롬프트 개선**: 간단한 키워드를 상세한 프롬프트로 자동 변환
 - **컬러링북 특화 생성**: 명확한 윤곽선과 단순한 구조의 이미지 생성
 - **다양한 스타일**: 동물, 식물, 건물, 캐릭터 등 다양한 주제 지원
+- **다중 AI 지원**: 여러 AI 서비스를 통한 다양한 이미지 생성 옵션
 
 ## 🚀 시작하기
 
@@ -44,9 +45,9 @@ npm run build
 ### 환경 설정
 
 1. `.env.example` 파일을 복사하여 `.env` 파일 생성
-2. Gemini API 키 설정:
+2. AI API 키 설정 (선택사항):
 ```env
-VITE_GEMINI_API_KEY=your_gemini_api_key_here
+VITE_GEMINI_API_KEY=your_api_key_here
 ```
 
 ### 시스템 요구사항
@@ -84,7 +85,7 @@ ColoringBookMaker/
 - **Build Tool**: Vite
 - **Image Processing**: OpenCV.js 4.8.0, Canvas API
 - **Computer Vision**: Canny Edge Detection, Gaussian Blur, Morphological Operations
-- **AI Integration**: Google Gemini API
+- **AI Integration**: Multiple AI APIs
 - **Image Generation**: Pollinations AI (무료 API)
 
 ## 📱 반응형 디자인
