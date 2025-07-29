@@ -1767,10 +1767,35 @@
                 const width = imageData.width;
                 const height = imageData.height;
                 
-                // ImageData를 OpenCV Mat으로 변환
+                // ImageData 유효성 검사
+                if (!imageData || !imageData.data || width <= 0 || height <= 0) {
+                    throw new Error('유효하지 않은 ImageData입니다');
+                }
+                
+                if (imageData.data.length !== width * height * 4) {
+                    throw new Error(`ImageData 크기 불일치: 예상 ${width * height * 4}, 실제 ${imageData.data.length}`);
+                }
+                
+                console.log('ImageData 검증 완료:', { width, height, dataLength: imageData.data.length });
+                
+                // ImageData를 OpenCV Mat으로 안전하게 변환
                 console.log('Mat 생성 중...');
-                const src = cv.matFromImageData(imageData);
-                console.log('Mat 생성 완료:', src.size());
+                let src;
+                try {
+                    // 새로운 ImageData 객체를 생성하여 데이터 무결성 보장
+                    const clonedData = new Uint8ClampedArray(imageData.data);
+                    const clonedImageData = new ImageData(clonedData, width, height);
+                    src = cv.matFromImageData(clonedImageData);
+                } catch (matError) {
+                    console.error('Mat 생성 실패:', matError);
+                    throw new Error('Mat 생성 중 오류 발생: ' + matError.message);
+                }
+                
+                if (!src || src.empty()) {
+                    throw new Error('생성된 Mat이 비어있습니다');
+                }
+                
+                console.log('Mat 생성 완료:', { rows: src.rows, cols: src.cols, type: src.type() });
                 const gray = new cv.Mat();
                 const blurred = new cv.Mat();
                 const edges = new cv.Mat();
@@ -1810,23 +1835,62 @@
                 const colorResult = new cv.Mat();
                 cv.cvtColor(result, colorResult, cv.COLOR_GRAY2RGBA);
                 
-                // Mat을 ImageData로 변환
+                // Mat을 ImageData로 안전하게 변환
                 console.log('7. ImageData로 변환 중...');
-                const outputImageData = new ImageData(new Uint8ClampedArray(colorResult.data), width, height);
+                let outputImageData;
+                try {
+                    // Mat 데이터 크기 검증
+                    const expectedSize = width * height * 4; // RGBA
+                    if (colorResult.data.length !== expectedSize) {
+                        throw new Error(`Mat 데이터 크기 불일치: 예상 ${expectedSize}, 실제 ${colorResult.data.length}`);
+                    }
+                    
+                    // 안전한 데이터 복사
+                    const outputData = new Uint8ClampedArray(colorResult.data);
+                    outputImageData = new ImageData(outputData, width, height);
+                    
+                    console.log('ImageData 변환 완료:', { 
+                        width: outputImageData.width, 
+                        height: outputImageData.height, 
+                        dataLength: outputImageData.data.length 
+                    });
+                } catch (conversionError) {
+                    throw new Error('ImageData 변환 중 오류: ' + conversionError.message);
+                }
+                
                 console.log('OpenCV 처리 완료!');
                 
-                // 메모리 정리
-                src.delete();
-                gray.delete();
-                blurred.delete();
-                edges.delete();
-                result.delete();
-                colorResult.delete();
+                // 안전한 메모리 정리
+                console.log('8. 메모리 정리 중...');
+                try {
+                    if (src && !src.isDeleted()) src.delete();
+                    if (gray && !gray.isDeleted()) gray.delete();
+                    if (blurred && !blurred.isDeleted()) blurred.delete();
+                    if (edges && !edges.isDeleted()) edges.delete();
+                    if (result && !result.isDeleted()) result.delete();
+                    if (colorResult && !colorResult.isDeleted()) colorResult.delete();
+                } catch (deleteError) {
+                    console.warn('메모리 정리 중 경고:', deleteError);
+                }
                 
                 return outputImageData;
                 
             } catch (error) {
                 console.error('OpenCV 처리 중 오류 발생:', error);
+                
+                // 오류 발생 시에도 메모리 정리 시도
+                try {
+                    if (typeof src !== 'undefined' && src && !src.isDeleted()) src.delete();
+                    if (typeof gray !== 'undefined' && gray && !gray.isDeleted()) gray.delete();
+                    if (typeof blurred !== 'undefined' && blurred && !blurred.isDeleted()) blurred.delete();
+                    if (typeof edges !== 'undefined' && edges && !edges.isDeleted()) edges.delete();
+                    if (typeof result !== 'undefined' && result && !result.isDeleted()) result.delete();
+                    if (typeof colorResult !== 'undefined' && colorResult && !colorResult.isDeleted()) colorResult.delete();
+                } catch (cleanupError) {
+                    console.warn('오류 시 메모리 정리 실패:', cleanupError);
+                }
+                
+                // 기본 처리로 폴백
                 return applyBasicProcessing(imageData, threshold, lineWidth);
             }
         }
