@@ -8,39 +8,88 @@
     <script>
         // OpenCV.js 안정적 로딩 시스템
         let openCvLoadAttempts = 0;
-        const maxRetries = 3;
+        const maxRetries = 2; // 재시도 횟수 감소
         let openCvLoadTimeout;
+        let isOpenCVLoading = false; // 로딩 중복 방지
+        
+        function cleanupExistingOpenCV() {
+            // 기존 OpenCV 관련 요소들 정리
+            const existingScripts = document.querySelectorAll('script[src*="opencv.js"]');
+            existingScripts.forEach(script => script.remove());
+            
+            // 전역 cv 객체 정리 (있다면)
+            if (typeof window.cv !== 'undefined') {
+                try {
+                    delete window.cv;
+                } catch (e) {
+                    window.cv = undefined;
+                }
+            }
+        }
         
         function loadOpenCV() {
             return new Promise((resolve, reject) => {
                 const script = document.createElement('script');
                 script.type = 'text/javascript';
                 script.async = true;
+                script.id = 'opencv-script';
                 
                 // 캐시 버스팅을 위한 타임스탬프 추가
                 const cacheBuster = Date.now();
                 script.src = `https://docs.opencv.org/4.8.0/opencv.js?v=${cacheBuster}`;
                 
-                // 10초 타임아웃 설정
+                // 15초 타임아웃 설정 (더 여유롭게)
                 const timeoutId = setTimeout(() => {
                     script.remove();
-                    reject(new Error('OpenCV.js 로딩 타임아웃'));
-                }, 10000);
+                    reject(new Error('OpenCV.js 로딩 타임아웃 (15초)'));
+                }, 15000);
                 
                 script.onload = () => {
                     clearTimeout(timeoutId);
-                    // cv가 실제로 로드되었는지 확인
-                    if (typeof cv !== 'undefined' && cv.Mat) {
-                        resolve();
-                    } else {
-                        reject(new Error('OpenCV.js 로드 되었지만 초기화되지 않음'));
-                    }
+                    
+                    // OpenCV 완전 로딩 대기 (더 정교한 체크)
+                    const waitForOpenCV = () => {
+                        return new Promise((cvResolve, cvReject) => {
+                            let checkCount = 0;
+                            const maxChecks = 50; // 5초간 체크
+                            
+                            const checkOpenCV = () => {
+                                checkCount++;
+                                
+                                if (typeof cv !== 'undefined' && cv && cv.Mat && cv.imread && cv.cvtColor) {
+                                    // 실제 함수 호출 테스트
+                                    try {
+                                        // 간단한 테스트 Mat 생성
+                                        const testMat = new cv.Mat(1, 1, cv.CV_8UC1);
+                                        testMat.delete();
+                                        cvResolve();
+                                    } catch (testError) {
+                                        if (checkCount < maxChecks) {
+                                            setTimeout(checkOpenCV, 100);
+                                        } else {
+                                            cvReject(new Error('OpenCV 함수 테스트 실패'));
+                                        }
+                                    }
+                                } else if (checkCount < maxChecks) {
+                                    setTimeout(checkOpenCV, 100);
+                                } else {
+                                    cvReject(new Error('OpenCV 초기화 타임아웃'));
+                                }
+                            };
+                            
+                            checkOpenCV();
+                        });
+                    };
+                    
+                    waitForOpenCV()
+                        .then(() => resolve())
+                        .catch(err => reject(err));
                 };
                 
                 script.onerror = () => {
                     clearTimeout(timeoutId);
                     script.remove();
-                    reject(new Error('OpenCV.js 로드 실패'));
+                    reject(new Error('OpenCV.js 스크립트 로드 실패'));
                 };
                 
                 document.head.appendChild(script);
@@ -48,25 +97,24 @@
         }
         
         async function initOpenCV() {
+            if (isOpenCVLoading) {
+                console.log('OpenCV 로딩이 이미 진행 중입니다.');
+                return;
+            }
+            
+            isOpenCVLoading = true;
             openCvLoadAttempts++;
             
             try {
                 updateOpenCVStatus('loading', `OpenCV.js 로딩 중... (${openCvLoadAttempts}/${maxRetries})`);
                 
+                // 재시도인 경우 기존 요소들 정리
+                if (openCvLoadAttempts > 1) {
+                    cleanupExistingOpenCV();
+                    await new Promise(resolve => setTimeout(resolve, 1000)); // 1초 대기
+                }
+                
                 await loadOpenCV();
-                
-                // 추가 초기화 대기 (OpenCV가 완전히 준비될 때까지)
-                await new Promise(resolve => {
-                    const checkReady = () => {
-                        if (typeof cv !== 'undefined' && cv.Mat) {
-                            resolve();
-                        } else {
-                            setTimeout(checkReady, 100);
-                        }
-                    };
-                    checkReady();
-                });
-                
                 onOpenCvReady();
                 
             } catch (error) {
@@ -74,10 +122,12 @@
                 
                 if (openCvLoadAttempts < maxRetries) {
                     updateOpenCVStatus('retry', `재시도 중... (${openCvLoadAttempts + 1}/${maxRetries})`);
-                    setTimeout(() => initOpenCV(), 2000); // 2초 후 재시도
+                    isOpenCVLoading = false; // 재시도를 위해 플래그 해제
+                    setTimeout(() => initOpenCV(), 3000); // 3초 후 재시도
                 } else {
                     updateOpenCVStatus('failed', 'OpenCV.js 로드 실패 - 기본 알고리즘 사용');
                     console.warn('OpenCV.js 로드 실패. 기본 이미지 처리 알고리즘을 사용합니다.');
+                    isOpenCVLoading = false;
                 }
             }
         }
@@ -448,6 +498,7 @@
         // OpenCV.js 초기화 완료
         function onOpenCvReady() {
             openCvReady = true;
+            isOpenCVLoading = false; // 로딩 완료 플래그 해제
             console.log('OpenCV.js가 성공적으로 로드되었습니다.');
             
             try {
@@ -1782,9 +1833,29 @@
                 console.log('Mat 생성 중...');
                 let src;
                 try {
-                    // 방법 1: 직접 Mat 생성 후 데이터 복사
+                    // 방법 1: 직접 Mat 생성 후 데이터 복사 (더 안전한 방식)
                     src = new cv.Mat(height, width, cv.CV_8UC4);
-                    const dataHeap = new Uint8Array(cv.HEAP8.buffer, src.data, src.rows * src.cols * src.channels());
+                    
+                    // 메모리 안전성 검증
+                    if (src.data === 0 || src.empty()) {
+                        throw new Error('Mat 메모리 할당 실패');
+                    }
+                    
+                    // 안전한 데이터 복사
+                    const expectedDataSize = height * width * 4;
+                    if (src.rows * src.cols * src.channels() !== expectedDataSize) {
+                        throw new Error(`Mat 크기 불일치: 예상 ${expectedDataSize}, 실제 ${src.rows * src.cols * src.channels()}`);
+                    }
+                    
+                    // HEAP8 접근 전 경계 검사
+                    const matDataPtr = src.data;
+                    const matDataSize = src.rows * src.cols * src.channels();
+                    
+                    if (matDataPtr + matDataSize > cv.HEAP8.length) {
+                        throw new Error('HEAP8 경계 초과 위험');
+                    }
+                    
+                    const dataHeap = new Uint8Array(cv.HEAP8.buffer, matDataPtr, matDataSize);
                     dataHeap.set(new Uint8Array(imageData.data));
                     console.log('방법 1 성공: 직접 Mat 생성');
                 } catch (method1Error) {
@@ -1862,7 +1933,12 @@
                 
                 // 1. 그레이스케일 변환
                 console.log('1. 그레이스케일 변환 중...');
-                cv.cvtColor(src, gray, cv.COLOR_RGBA2GRAY);
+                try {
+                    cv.cvtColor(src, gray, cv.COLOR_RGBA2GRAY);
+                } catch (cvtColorError) {
+                    console.warn('COLOR_RGBA2GRAY 실패, RGB로 시도:', cvtColorError);
+                    cv.cvtColor(src, gray, cv.COLOR_RGB2GRAY);
+                }
                 
                 // 2. 가우시안 블러 (노이즈 제거)
                 console.log('2. 가우시안 블러 적용 중...');
@@ -1892,7 +1968,12 @@
                 // 6. 컬러 이미지로 변환
                 console.log('6. 컬러 변환 중...');
                 const colorResult = new cv.Mat();
-                cv.cvtColor(result, colorResult, cv.COLOR_GRAY2RGBA);
+                try {
+                    cv.cvtColor(result, colorResult, cv.COLOR_GRAY2RGBA);
+                } catch (colorConvertError) {
+                    console.warn('COLOR_GRAY2RGBA 실패, RGB로 시도:', colorConvertError);
+                    cv.cvtColor(result, colorResult, cv.COLOR_GRAY2RGB);
+                }
                 
                 // 7. 원본 크기로 복원 (필요한 경우)
                 let finalResult = colorResult;
