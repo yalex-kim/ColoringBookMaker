@@ -5,6 +5,14 @@
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
     <title>컬러링북 메이커 - AI 이미지 생성 포함</title>
     <link rel="stylesheet" href="./styles/main.css">
+    
+    <!-- OpenCV.js 리소스 미리 로딩 힌트 -->
+    <link rel="preconnect" href="https://docs.opencv.org">
+    <link rel="preconnect" href="https://cdn.jsdelivr.net">
+    <link rel="preconnect" href="https://unpkg.com">
+    <link rel="dns-prefetch" href="https://docs.opencv.org">
+    <link rel="dns-prefetch" href="https://cdn.jsdelivr.net">
+    <link rel="dns-prefetch" href="https://unpkg.com">
     <script>
         // OpenCV.js 안정적 로딩 시스템
         let openCvLoadAttempts = 0;
@@ -35,6 +43,8 @@
                 for (let i = 0; i < opencvUrls.length; i++) {
                     try {
                         console.log(`OpenCV CDN 시도 ${i + 1}/${opencvUrls.length}: ${opencvUrls[i]}`);
+                        updateOpenCVStatus('loading', `OpenCV 로딩 중... CDN ${i + 1}/${opencvUrls.length}`);
+                        
                         await loadFromUrl(opencvUrls[i]);
                         console.log(`OpenCV CDN ${i + 1} 로드 성공`);
                         resolve();
@@ -44,6 +54,8 @@
                         if (i === opencvUrls.length - 1) {
                             reject(new Error('모든 OpenCV CDN 로드 실패'));
                         }
+                        // 다음 CDN으로 넘어가기 전 잠깐 대기
+                        await new Promise(resolve => setTimeout(resolve, 500));
                     }
                 }
             });
@@ -635,6 +647,17 @@
                 event.preventDefault();
             }
         });
+
+        // Service Worker를 통한 OpenCV.js 캐싱 (선택적)
+        if ('serviceWorker' in navigator && 'caches' in window) {
+            // OpenCV.js를 캐시에 미리 저장
+            caches.open('opencv-cache-v1').then(cache => {
+                cache.addAll([
+                    'https://docs.opencv.org/4.8.0/opencv.js',
+                    'https://cdn.jsdelivr.net/npm/opencv.js@4.8.0/opencv.js'
+                ]).catch(err => console.log('OpenCV 캐싱 실패 (정상):', err.message));
+            });
+        }
 
         document.addEventListener('DOMContentLoaded', function() {
             initApp();
@@ -1927,6 +1950,13 @@
             } else {
                 // OpenCV가 로드되지 않은 경우 기존 알고리즘 사용
                 console.warn('OpenCV가 로드되지 않아 기본 알고리즘을 사용합니다.');
+                
+                // 사용자에게 알림 (한 번만)
+                if (!window.basicProcessingNotified) {
+                    window.basicProcessingNotified = true;
+                    console.info('💡 OpenCV를 사용할 수 없어 기본 이미지 처리를 사용합니다. 품질이 다소 다를 수 있습니다.');
+                }
+                
                 return applyBasicProcessing(imageData, threshold, lineWidth);
             }
         }
