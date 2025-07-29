@@ -5,7 +5,121 @@
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
     <title>컬러링북 메이커 - AI 이미지 생성 포함</title>
     <link rel="stylesheet" href="./styles/main.css">
-    <script async src="https://docs.opencv.org/4.8.0/opencv.js" onload="onOpenCvReady();" type="text/javascript"></script>
+    <script>
+        // OpenCV.js 안정적 로딩 시스템
+        let openCvLoadAttempts = 0;
+        const maxRetries = 3;
+        let openCvLoadTimeout;
+        
+        function loadOpenCV() {
+            return new Promise((resolve, reject) => {
+                const script = document.createElement('script');
+                script.type = 'text/javascript';
+                script.async = true;
+                
+                // 캐시 버스팅을 위한 타임스탬프 추가
+                const cacheBuster = Date.now();
+                script.src = `https://docs.opencv.org/4.8.0/opencv.js?v=${cacheBuster}`;
+                
+                // 10초 타임아웃 설정
+                const timeoutId = setTimeout(() => {
+                    script.remove();
+                    reject(new Error('OpenCV.js 로딩 타임아웃'));
+                }, 10000);
+                
+                script.onload = () => {
+                    clearTimeout(timeoutId);
+                    // cv가 실제로 로드되었는지 확인
+                    if (typeof cv !== 'undefined' && cv.Mat) {
+                        resolve();
+                    } else {
+                        reject(new Error('OpenCV.js 로드 되었지만 초기화되지 않음'));
+                    }
+                };
+                
+                script.onerror = () => {
+                    clearTimeout(timeoutId);
+                    script.remove();
+                    reject(new Error('OpenCV.js 로드 실패'));
+                };
+                
+                document.head.appendChild(script);
+            });
+        }
+        
+        async function initOpenCV() {
+            openCvLoadAttempts++;
+            
+            try {
+                updateOpenCVStatus('loading', `OpenCV.js 로딩 중... (${openCvLoadAttempts}/${maxRetries})`);
+                
+                await loadOpenCV();
+                
+                // 추가 초기화 대기 (OpenCV가 완전히 준비될 때까지)
+                await new Promise(resolve => {
+                    const checkReady = () => {
+                        if (typeof cv !== 'undefined' && cv.Mat) {
+                            resolve();
+                        } else {
+                            setTimeout(checkReady, 100);
+                        }
+                    };
+                    checkReady();
+                });
+                
+                onOpenCvReady();
+                
+            } catch (error) {
+                console.error(`OpenCV 로딩 시도 ${openCvLoadAttempts} 실패:`, error);
+                
+                if (openCvLoadAttempts < maxRetries) {
+                    updateOpenCVStatus('retry', `재시도 중... (${openCvLoadAttempts + 1}/${maxRetries})`);
+                    setTimeout(() => initOpenCV(), 2000); // 2초 후 재시도
+                } else {
+                    updateOpenCVStatus('failed', 'OpenCV.js 로드 실패 - 기본 알고리즘 사용');
+                    console.warn('OpenCV.js 로드 실패. 기본 이미지 처리 알고리즘을 사용합니다.');
+                }
+            }
+        }
+        
+        function updateOpenCVStatus(status, message) {
+            const statusElements = document.querySelectorAll('.opencv-status');
+            statusElements.forEach(el => {
+                el.textContent = message;
+                el.className = 'opencv-status';
+                
+                switch(status) {
+                    case 'loading':
+                        el.style.color = '#ff9800';
+                        el.textContent = '⏳ ' + message;
+                        break;
+                    case 'retry':
+                        el.style.color = '#2196F3';
+                        el.textContent = '🔄 ' + message;
+                        break;
+                    case 'failed':
+                        el.style.color = '#f44336';
+                        el.textContent = '⚠️ ' + message;
+                        el.innerHTML += '<br><button onclick="retryOpenCV()" style="font-size:0.8em; margin-top:5px; padding:2px 8px; background:#f44336; color:white; border:none; border-radius:3px; cursor:pointer;">다시 시도</button>';
+                        break;
+                    case 'success':
+                        el.style.color = 'green';
+                        el.textContent = '✅ ' + message;
+                        break;
+                }
+            });
+        }
+        
+        function retryOpenCV() {
+            openCvLoadAttempts = 0;
+            initOpenCV();
+        }
+        
+        // 페이지 로드 후 OpenCV 초기화
+        document.addEventListener('DOMContentLoaded', () => {
+            initOpenCV();
+        });
+    </script>
 </head>
 <body>
     <div class="container">
@@ -331,17 +445,19 @@
         let currentImage = null;
         let openCvReady = false;
 
-        // OpenCV.js 초기화
+        // OpenCV.js 초기화 완료
         function onOpenCvReady() {
             openCvReady = true;
-            console.log('OpenCV.js가 로드되었습니다. 버전:', cv.getBuildInformation());
+            console.log('OpenCV.js가 성공적으로 로드되었습니다.');
             
-            // UI에 OpenCV 로드 상태 표시
-            const statusElements = document.querySelectorAll('.opencv-status');
-            statusElements.forEach(el => {
-                el.textContent = 'OpenCV.js 로드됨 ✅';
-                el.style.color = 'green';
-            });
+            try {
+                const buildInfo = cv.getBuildInformation();
+                console.log('OpenCV 버전 정보:', buildInfo);
+                updateOpenCVStatus('success', 'OpenCV.js 로드 완료');
+            } catch (error) {
+                console.warn('OpenCV 버전 정보를 가져올 수 없습니다:', error);
+                updateOpenCVStatus('success', 'OpenCV.js 로드됨');
+            }
         }
 
         document.addEventListener('DOMContentLoaded', function() {
@@ -1642,6 +1758,12 @@
         function applyOpenCVProcessing(imageData, threshold, lineWidth) {
             try {
                 console.log('OpenCV 처리 시작');
+                
+                // OpenCV가 정말로 준비되었는지 재확인
+                if (!openCvReady || typeof cv === 'undefined' || !cv.Mat) {
+                    throw new Error('OpenCV가 완전히 로드되지 않았습니다');
+                }
+                
                 const width = imageData.width;
                 const height = imageData.height;
                 
