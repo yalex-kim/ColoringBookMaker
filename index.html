@@ -13,6 +13,18 @@
         
         function loadOpenCV() {
             return new Promise((resolve, reject) => {
+                // OpenCV가 이미 로드되어 있는지 확인
+                if (typeof cv !== 'undefined' && cv.Mat) {
+                    resolve();
+                    return;
+                }
+                
+                // 글로벌 콜백을 미리 설정 (OpenCV.js가 참조함)
+                window.cv = window.cv || {};
+                window.cv.onRuntimeInitialized = function() {
+                    console.log('OpenCV runtime 초기화 완료');
+                };
+                
                 const script = document.createElement('script');
                 script.type = 'text/javascript';
                 script.async = true;
@@ -21,20 +33,16 @@
                 const cacheBuster = Date.now();
                 script.src = `https://docs.opencv.org/4.8.0/opencv.js?v=${cacheBuster}`;
                 
-                // 10초 타임아웃 설정
+                // 15초 타임아웃 설정 (GitHub Pages에서는 더 오래 걸릴 수 있음)
                 const timeoutId = setTimeout(() => {
                     script.remove();
                     reject(new Error('OpenCV.js 로딩 타임아웃'));
-                }, 10000);
+                }, 15000);
                 
                 script.onload = () => {
                     clearTimeout(timeoutId);
-                    // cv가 실제로 로드되었는지 확인
-                    if (typeof cv !== 'undefined' && cv.Mat) {
-                        resolve();
-                    } else {
-                        reject(new Error('OpenCV.js 로드 되었지만 초기화되지 않음'));
-                    }
+                    console.log('OpenCV.js 스크립트 로드 완료');
+                    resolve();
                 };
                 
                 script.onerror = () => {
@@ -55,15 +63,53 @@
                 
                 await loadOpenCV();
                 
-                // 추가 초기화 대기 (OpenCV가 완전히 준비될 때까지)
-                await new Promise(resolve => {
+                // OpenCV 완전 초기화 대기 (더 긴 시간과 더 엄격한 검사)
+                await new Promise((resolve, reject) => {
+                    let attempts = 0;
+                    const maxAttempts = 100; // 10초 대기
+                    
                     const checkReady = () => {
-                        if (typeof cv !== 'undefined' && cv.Mat) {
-                            resolve();
-                        } else {
+                        attempts++;
+                        
+                        try {
+                            // cv 객체와 필수 함수들이 모두 존재하는지 확인
+                            if (typeof cv !== 'undefined' && 
+                                cv.Mat && 
+                                cv.imread && 
+                                cv.cvtColor && 
+                                cv.Canny &&
+                                typeof cv.onRuntimeInitialized !== 'undefined') {
+                                
+                                // 실제로 Mat 생성이 가능한지 테스트
+                                try {
+                                    const testMat = new cv.Mat(1, 1, cv.CV_8UC1);
+                                    testMat.delete();
+                                    console.log('OpenCV 초기화 완료 확인됨');
+                                    resolve();
+                                    return;
+                                } catch (matError) {
+                                    console.log(`Mat 생성 테스트 실패 (시도 ${attempts}):`, matError);
+                                }
+                            }
+                            
+                            if (attempts >= maxAttempts) {
+                                reject(new Error(`OpenCV 초기화 타임아웃 (${attempts} 시도)`));
+                                return;
+                            }
+                            
+                            setTimeout(checkReady, 100);
+                        } catch (error) {
+                            console.log(`OpenCV 초기화 확인 중 오류 (시도 ${attempts}):`, error);
+                            if (attempts >= maxAttempts) {
+                                reject(error);
+                                return;
+                            }
                             setTimeout(checkReady, 100);
                         }
                     };
+                    
+                    // 글로벌 초기화 콜백은 이미 loadOpenCV에서 설정됨
+                    
                     checkReady();
                 });
                 
@@ -447,19 +493,34 @@
 
         // OpenCV.js 초기화 완료
         function onOpenCvReady() {
-            openCvReady = true;
             console.log('OpenCV.js가 성공적으로 로드되었습니다.');
             
             try {
-                const buildInfo = cv.getBuildInformation();
-                console.log('OpenCV 버전 정보:', buildInfo);
-                updateOpenCVStatus('success', 'OpenCV.js 로드 완료');
+                // getBuildInformation은 때때로 실패할 수 있으므로 필수가 아님
+                if (cv.getBuildInformation && typeof cv.getBuildInformation === 'function') {
+                    try {
+                        const buildInfo = cv.getBuildInformation();
+                        console.log('OpenCV 버전 정보:', buildInfo);
+                    } catch (buildInfoError) {
+                        console.warn('OpenCV 버전 정보 호출 실패 (정상 동작에는 영향 없음):', buildInfoError.message);
+                    }
+                }
                 
                 // 메모리 초기화 테스트
                 testOpenCVMemory();
+                
+                // 모든 검증이 완료되면 ready 상태로 설정
+                if (openCvReady) { // testOpenCVMemory에서 설정됨
+                    updateOpenCVStatus('success', 'OpenCV.js 로드 완료');
+                    console.log('OpenCV.js 완전 초기화 완료');
+                } else {
+                    throw new Error('OpenCV 메모리 테스트 실패');
+                }
+                
             } catch (error) {
-                console.warn('OpenCV 버전 정보를 가져올 수 없습니다:', error);
-                updateOpenCVStatus('success', 'OpenCV.js 로드됨');
+                console.error('OpenCV 초기화 중 오류:', error);
+                openCvReady = false;
+                updateOpenCVStatus('failed', 'OpenCV.js 초기화 실패 - 기본 알고리즘 사용');
             }
         }
 
@@ -470,9 +531,11 @@
                 const testMat = new cv.Mat(10, 10, cv.CV_8UC4);
                 console.log('OpenCV 메모리 테스트 성공');
                 testMat.delete();
+                openCvReady = true; // 테스트 성공 시에만 활성화
             } catch (error) {
                 console.warn('OpenCV 메모리 테스트 실패:', error);
                 openCvReady = false; // 메모리 문제가 있으면 비활성화
+                throw error; // 오류를 다시 던져서 상위에서 처리
             }
         }
 
@@ -508,6 +571,38 @@
                 return false;
             }
         }
+
+        // OpenCV 관련 경고 억제 (정상 동작에 영향 없는 에러들)
+        window.addEventListener('error', function(event) {
+            const message = event.message || '';
+            const filename = event.filename || '';
+            
+            // OpenCV.js의 정상적인 내부 에러들은 억제
+            if (filename.includes('opencv.js') && (
+                message.includes('BindingError') ||
+                message.includes('dynCall_') ||
+                message.includes('table index') ||
+                message.includes('getBuildInformation')
+            )) {
+                console.log('OpenCV 내부 경고 억제됨:', message);
+                event.preventDefault();
+                return false;
+            }
+        });
+        
+        window.addEventListener('unhandledrejection', function(event) {
+            const reason = event.reason || '';
+            
+            // OpenCV 관련 Promise rejection 억제
+            if (typeof reason === 'string' && (
+                reason.includes('OpenCV') ||
+                reason.includes('BindingError') ||
+                reason.includes('dynCall_')
+            )) {
+                console.log('OpenCV Promise rejection 억제됨:', reason);
+                event.preventDefault();
+            }
+        });
 
         document.addEventListener('DOMContentLoaded', function() {
             initApp();
