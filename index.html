@@ -454,9 +454,58 @@
                 const buildInfo = cv.getBuildInformation();
                 console.log('OpenCV 버전 정보:', buildInfo);
                 updateOpenCVStatus('success', 'OpenCV.js 로드 완료');
+                
+                // 메모리 초기화 테스트
+                testOpenCVMemory();
             } catch (error) {
                 console.warn('OpenCV 버전 정보를 가져올 수 없습니다:', error);
                 updateOpenCVStatus('success', 'OpenCV.js 로드됨');
+            }
+        }
+
+        // OpenCV 메모리 상태 테스트
+        function testOpenCVMemory() {
+            try {
+                // 작은 테스트 Mat 생성으로 메모리 상태 확인
+                const testMat = new cv.Mat(10, 10, cv.CV_8UC4);
+                console.log('OpenCV 메모리 테스트 성공');
+                testMat.delete();
+            } catch (error) {
+                console.warn('OpenCV 메모리 테스트 실패:', error);
+                openCvReady = false; // 메모리 문제가 있으면 비활성화
+            }
+        }
+
+        // OpenCV가 안전하게 사용 가능한지 확인
+        function isOpenCVSafe(width, height) {
+            if (!openCvReady || typeof cv === 'undefined' || !cv.Mat) {
+                return false;
+            }
+            
+            // 이미지 크기가 너무 큰 경우 안전하지 않음
+            const maxPixels = 1000000; // 1M 픽셀 제한
+            if (width * height > maxPixels) {
+                console.warn(`이미지가 너무 큽니다: ${width}x${height} (${width * height} 픽셀)`);
+                return false;
+            }
+            
+            try {
+                // 메모리 힙 상태 확인
+                const totalMemory = cv.HEAP8.length;
+                const usedMemory = cv.HEAP8.buffer.byteLength;
+                console.log(`OpenCV 메모리 상태: ${usedMemory}/${totalMemory} bytes`);
+                
+                // 메모리가 충분한지 확인 (필요한 메모리의 3배 정도 여유 필요)
+                const requiredMemory = width * height * 4 * 3; // 3배 여유분
+                if (totalMemory - usedMemory < requiredMemory) {
+                    console.warn('OpenCV 메모리 부족');
+                    return false;
+                }
+                
+                return true;
+            } catch (error) {
+                console.warn('OpenCV 메모리 상태 확인 실패:', error);
+                return false;
             }
         }
 
@@ -1745,7 +1794,7 @@
                 cvAvailable: typeof cv !== 'undefined'
             });
             
-            if (openCvReady && typeof cv !== 'undefined') {
+            if (isOpenCVSafe(width, height)) {
                 console.log('OpenCV 처리 모드 사용');
                 return applyOpenCVProcessing(imageData, threshold, lineWidth);
             } else {
@@ -1759,9 +1808,9 @@
             try {
                 console.log('OpenCV 처리 시작');
                 
-                // OpenCV가 정말로 준비되었는지 재확인
-                if (!openCvReady || typeof cv === 'undefined' || !cv.Mat) {
-                    throw new Error('OpenCV가 완전히 로드되지 않았습니다');
+                // OpenCV가 안전하게 사용 가능한지 재확인
+                if (!isOpenCVSafe(imageData.width, imageData.height)) {
+                    throw new Error('OpenCV를 안전하게 사용할 수 없는 상태입니다');
                 }
                 
                 const width = imageData.width;
@@ -1778,37 +1827,44 @@
                 
                 console.log('ImageData 검증 완료:', { width, height, dataLength: imageData.data.length });
                 
-                // 대안적 방법으로 Mat 생성 시도
+                // 메모리 정리 후 Mat 생성
+                if (typeof window.gc === 'function') {
+                    window.gc(); // 가능한 경우 가비지 컬렉션 강제 실행
+                }
+                
+                // 안전한 Mat 생성 방법
                 console.log('Mat 생성 중...');
                 let src;
+                
                 try {
-                    // 방법 1: 직접 Mat 생성 후 데이터 복사
-                    src = new cv.Mat(height, width, cv.CV_8UC4);
-                    const dataHeap = new Uint8Array(cv.HEAP8.buffer, src.data, src.rows * src.cols * src.channels());
-                    dataHeap.set(new Uint8Array(imageData.data));
-                    console.log('방법 1 성공: 직접 Mat 생성');
+                    // 방법 1: Canvas를 통한 안전한 방법 (가장 안정적)
+                    console.log('방법 1 시도: Canvas를 통한 안전한 생성');
+                    const tempCanvas = document.createElement('canvas');
+                    const tempCtx = tempCanvas.getContext('2d');
+                    tempCanvas.width = width;
+                    tempCanvas.height = height;
+                    tempCtx.putImageData(imageData, 0, 0);
+                    
+                    // Canvas에서 Mat 생성 (OpenCV.js의 안전한 방법)
+                    src = cv.imread(tempCanvas);
+                    console.log('방법 1 성공: Canvas를 통한 Mat 생성');
+                    
                 } catch (method1Error) {
                     console.warn('방법 1 실패:', method1Error);
                     
                     try {
-                        // 방법 2: Canvas를 통한 우회 방법
-                        console.log('방법 2 시도: Canvas 우회');
-                        const tempCanvas = document.createElement('canvas');
-                        const tempCtx = tempCanvas.getContext('2d');
-                        tempCanvas.width = width;
-                        tempCanvas.height = height;
-                        tempCtx.putImageData(imageData, 0, 0);
+                        // 방법 2: matFromImageData 사용 (더 안전한 접근)
+                        console.log('방법 2 시도: matFromImageData 사용');
+                        src = cv.matFromImageData(imageData);
+                        console.log('방법 2 성공: matFromImageData');
                         
-                        // Canvas에서 Mat 직접 생성
-                        src = cv.imread(tempCanvas);
-                        console.log('방법 2 성공: Canvas 우회');
                     } catch (method2Error) {
                         console.warn('방법 2 실패:', method2Error);
                         
                         try {
                             // 방법 3: 작은 크기로 리사이즈 후 처리
                             console.log('방법 3 시도: 이미지 크기 축소');
-                            const maxSize = 800;
+                            const maxSize = 600; // 더 작은 크기로 제한
                             let newWidth = width;
                             let newHeight = height;
                             
@@ -1816,6 +1872,8 @@
                                 const ratio = Math.min(maxSize / width, maxSize / height);
                                 newWidth = Math.floor(width * ratio);
                                 newHeight = Math.floor(height * ratio);
+                                
+                                console.log(`이미지 크기 축소: ${width}x${height} → ${newWidth}x${newHeight}`);
                                 
                                 // Canvas로 리사이즈
                                 const resizeCanvas = document.createElement('canvas');
@@ -1833,13 +1891,35 @@
                                 
                                 // 리사이즈된 이미지에서 Mat 생성
                                 src = cv.imread(resizeCanvas);
-                                console.log(`방법 3 성공: ${width}x${height} → ${newWidth}x${newHeight}`);
+                                console.log(`방법 3 성공: 리사이즈 완료`);
                             } else {
-                                throw new Error('이미지가 이미 적절한 크기입니다');
+                                // 크기가 적당하지만 여전히 실패하는 경우, 강제 리사이즈
+                                const forceSize = 400;
+                                const ratio = Math.min(forceSize / width, forceSize / height);
+                                newWidth = Math.floor(width * ratio);
+                                newHeight = Math.floor(height * ratio);
+                                
+                                console.log(`강제 리사이즈: ${width}x${height} → ${newWidth}x${newHeight}`);
+                                
+                                const resizeCanvas = document.createElement('canvas');
+                                const resizeCtx = resizeCanvas.getContext('2d');
+                                resizeCanvas.width = newWidth;
+                                resizeCanvas.height = newHeight;
+                                
+                                const tempCanvas = document.createElement('canvas');
+                                const tempCtx = tempCanvas.getContext('2d');
+                                tempCanvas.width = width;
+                                tempCanvas.height = height;
+                                tempCtx.putImageData(imageData, 0, 0);
+                                
+                                resizeCtx.drawImage(tempCanvas, 0, 0, width, height, 0, 0, newWidth, newHeight);
+                                
+                                src = cv.imread(resizeCanvas);
+                                console.log('방법 3 성공: 강제 리사이즈 완료');
                             }
                         } catch (method3Error) {
                             console.error('모든 Mat 생성 방법 실패:', method3Error);
-                            throw new Error('Mat 생성 불가능 - OpenCV 메모리 문제');
+                            throw new Error('Mat 생성 불가능 - OpenCV 메모리 문제로 인해 이미지 처리를 할 수 없습니다');
                         }
                     }
                 }
