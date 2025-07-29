@@ -1829,89 +1829,31 @@
                 
                 console.log('ImageData 검증 완료:', { width, height, dataLength: imageData.data.length });
                 
-                // 대안적 방법으로 Mat 생성 시도
+                // OpenCV Mat 생성을 위한 안전한 방법
                 console.log('Mat 생성 중...');
                 let src;
                 try {
-                    // 방법 1: 직접 Mat 생성 후 데이터 복사 (더 안전한 방식)
-                    src = new cv.Mat(height, width, cv.CV_8UC4);
-                    
-                    // 메모리 안전성 검증
-                    if (src.data === 0 || src.empty()) {
-                        throw new Error('Mat 메모리 할당 실패');
-                    }
-                    
-                    // 안전한 데이터 복사
-                    const expectedDataSize = height * width * 4;
-                    if (src.rows * src.cols * src.channels() !== expectedDataSize) {
-                        throw new Error(`Mat 크기 불일치: 예상 ${expectedDataSize}, 실제 ${src.rows * src.cols * src.channels()}`);
-                    }
-                    
-                    // HEAP8 접근 전 경계 검사
-                    const matDataPtr = src.data;
-                    const matDataSize = src.rows * src.cols * src.channels();
-                    
-                    if (matDataPtr + matDataSize > cv.HEAP8.length) {
-                        throw new Error('HEAP8 경계 초과 위험');
-                    }
-                    
-                    const dataHeap = new Uint8Array(cv.HEAP8.buffer, matDataPtr, matDataSize);
-                    dataHeap.set(new Uint8Array(imageData.data));
-                    console.log('방법 1 성공: 직접 Mat 생성');
+                    // 방법 1: OpenCV의 matFromImageData 사용 (가장 안전한 방법)
+                    src = cv.matFromImageData(imageData);
+                    console.log('방법 1 성공: matFromImageData 사용');
                 } catch (method1Error) {
                     console.warn('방법 1 실패:', method1Error);
                     
                     try {
-                        // 방법 2: Canvas를 통한 우회 방법
-                        console.log('방법 2 시도: Canvas 우회');
+                        // 방법 2: Canvas를 통한 안전한 Mat 생성
+                        console.log('방법 2 시도: Canvas 기반 Mat 생성');
                         const tempCanvas = document.createElement('canvas');
                         const tempCtx = tempCanvas.getContext('2d');
                         tempCanvas.width = width;
                         tempCanvas.height = height;
                         tempCtx.putImageData(imageData, 0, 0);
                         
-                        // Canvas에서 Mat 직접 생성
+                        // Canvas에서 직접 Mat 생성 (OpenCV의 imread 사용)
                         src = cv.imread(tempCanvas);
                         console.log('방법 2 성공: Canvas 우회');
                     } catch (method2Error) {
                         console.warn('방법 2 실패:', method2Error);
-                        
-                        try {
-                            // 방법 3: 작은 크기로 리사이즈 후 처리
-                            console.log('방법 3 시도: 이미지 크기 축소');
-                            const maxSize = 800;
-                            let newWidth = width;
-                            let newHeight = height;
-                            
-                            if (width > maxSize || height > maxSize) {
-                                const ratio = Math.min(maxSize / width, maxSize / height);
-                                newWidth = Math.floor(width * ratio);
-                                newHeight = Math.floor(height * ratio);
-                                
-                                // Canvas로 리사이즈
-                                const resizeCanvas = document.createElement('canvas');
-                                const resizeCtx = resizeCanvas.getContext('2d');
-                                resizeCanvas.width = newWidth;
-                                resizeCanvas.height = newHeight;
-                                
-                                const tempCanvas = document.createElement('canvas');
-                                const tempCtx = tempCanvas.getContext('2d');
-                                tempCanvas.width = width;
-                                tempCanvas.height = height;
-                                tempCtx.putImageData(imageData, 0, 0);
-                                
-                                resizeCtx.drawImage(tempCanvas, 0, 0, width, height, 0, 0, newWidth, newHeight);
-                                
-                                // 리사이즈된 이미지에서 Mat 생성
-                                src = cv.imread(resizeCanvas);
-                                console.log(`방법 3 성공: ${width}x${height} → ${newWidth}x${newHeight}`);
-                            } else {
-                                throw new Error('이미지가 이미 적절한 크기입니다');
-                            }
-                        } catch (method3Error) {
-                            console.error('모든 Mat 생성 방법 실패:', method3Error);
-                            throw new Error('Mat 생성 불가능 - OpenCV 메모리 문제');
-                        }
+                        throw new Error('Mat 생성 실패 - OpenCV 호환성 문제');
                     }
                 }
                 
@@ -1919,7 +1861,8 @@
                     throw new Error('생성된 Mat이 비어있습니다');
                 }
                 
-                console.log('Mat 생성 완료:', { rows: src.rows, cols: src.cols, type: src.type() });
+                const channels = src.channels();
+                console.log('Mat 생성 완료:', { rows: src.rows, cols: src.cols, type: src.type(), channels: channels });
                 
                 // 실제 처리 크기 저장 (리사이즈된 경우를 위해)
                 const processWidth = src.cols;
@@ -1931,13 +1874,29 @@
                 const edges = new cv.Mat();
                 const result = new cv.Mat();
                 
-                // 1. 그레이스케일 변환
-                console.log('1. 그레이스케일 변환 중...');
+                // 1. 그레이스케일 변환 (안전한 방법으로)
+                console.log('1. 그레이스케일 변환 중...', { channels });
                 try {
-                    cv.cvtColor(src, gray, cv.COLOR_RGBA2GRAY);
+                    // Mat의 실제 타입 확인
+                    const matType = src.type();
+                    console.log('Mat 타입 정보:', { type: matType, channels: channels });
+                    
+                    if (channels === 4) {
+                        // RGBA 또는 BGRA 형식
+                        cv.cvtColor(src, gray, cv.COLOR_BGRA2GRAY);
+                    } else if (channels === 3) {
+                        // RGB 또는 BGR 형식
+                        cv.cvtColor(src, gray, cv.COLOR_BGR2GRAY);
+                    } else if (channels === 1) {
+                        // 이미 그레이스케일
+                        src.copyTo(gray);
+                    } else {
+                        throw new Error(`지원되지 않는 채널 수: ${channels}`);
+                    }
+                    console.log('그레이스케일 변환 성공');
                 } catch (cvtColorError) {
-                    console.warn('COLOR_RGBA2GRAY 실패, RGB로 시도:', cvtColorError);
-                    cv.cvtColor(src, gray, cv.COLOR_RGB2GRAY);
+                    console.warn('그레이스케일 변환 실패:', cvtColorError);
+                    throw cvtColorError;
                 }
                 
                 // 2. 가우시안 블러 (노이즈 제거)
@@ -1965,14 +1924,21 @@
                 console.log('5. 색상 반전 중...');
                 cv.bitwise_not(result, result);
                 
-                // 6. 컬러 이미지로 변환
-                console.log('6. 컬러 변환 중...');
+                // 6. 컬러 이미지로 변환 (원본 채널 수에 맞춤)
+                console.log('6. 컬러 변환 중...', { targetChannels: channels });
                 const colorResult = new cv.Mat();
                 try {
-                    cv.cvtColor(result, colorResult, cv.COLOR_GRAY2RGBA);
+                    if (channels === 4) {
+                        cv.cvtColor(result, colorResult, cv.COLOR_GRAY2RGBA);
+                    } else if (channels === 3) {
+                        cv.cvtColor(result, colorResult, cv.COLOR_GRAY2RGB);
+                    } else {
+                        // 그레이스케일 그대로 사용
+                        result.copyTo(colorResult);
+                    }
                 } catch (colorConvertError) {
-                    console.warn('COLOR_GRAY2RGBA 실패, RGB로 시도:', colorConvertError);
-                    cv.cvtColor(result, colorResult, cv.COLOR_GRAY2RGB);
+                    console.warn('컬러 변환 실패, 그레이스케일 사용:', colorConvertError);
+                    result.copyTo(colorResult);
                 }
                 
                 // 7. 원본 크기로 복원 (필요한 경우)
@@ -2043,6 +2009,7 @@
                 }
                 
                 // 기본 처리로 폴백
+                console.warn('OpenCV 처리 실패로 기본 알고리즘 사용');
                 return applyBasicProcessing(imageData, threshold, lineWidth);
             }
         }
