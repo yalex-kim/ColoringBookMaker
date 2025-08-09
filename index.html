@@ -1677,8 +1677,28 @@
                 
                 // 처리된 데이터가 유효한지 확인
                 if (processedData && processedData.data && processedData.width && processedData.height) {
-                    ctx.putImageData(processedData, offsetX, offsetY);
-                    console.log('처리된 이미지 표시 완료');
+                    console.log('putImageData 시도:', { 
+                        dataLength: processedData.data.length, 
+                        width: processedData.width, 
+                        height: processedData.height,
+                        offsetX, 
+                        offsetY 
+                    });
+                    
+                    try {
+                        ctx.putImageData(processedData, offsetX, offsetY);
+                        console.log('✅ 처리된 이미지 표시 완료');
+                        
+                        // 렌더링 확인을 위해 작은 테스트
+                        const testData = ctx.getImageData(offsetX, offsetY, Math.min(10, processedData.width), Math.min(10, processedData.height));
+                        console.log('렌더링 검증 샘플:', Array.from(testData.data.slice(0, 16)));
+                        
+                    } catch (putImageError) {
+                        console.error('putImageData 실패:', putImageError);
+                        // putImageData 실패시 대안: 직접 픽셀 그리기
+                        console.log('대안 렌더링 시도...');
+                        drawImageDataManually(ctx, processedData, offsetX, offsetY);
+                    }
                 } else {
                     console.error('처리된 데이터가 유효하지 않습니다:', processedData);
                     throw new Error('이미지 처리 결과가 유효하지 않습니다');
@@ -1906,8 +1926,28 @@
                 
                 // 처리된 데이터가 유효한지 확인
                 if (processedData && processedData.data && processedData.width && processedData.height) {
-                    ctx.putImageData(processedData, offsetX, offsetY);
-                    console.log('처리된 이미지 적용 완료');
+                    console.log('putImageData 시도:', { 
+                        dataLength: processedData.data.length, 
+                        width: processedData.width, 
+                        height: processedData.height,
+                        offsetX, 
+                        offsetY 
+                    });
+                    
+                    try {
+                        ctx.putImageData(processedData, offsetX, offsetY);
+                        console.log('✅ 처리된 이미지 적용 완료');
+                        
+                        // 렌더링 확인을 위해 작은 테스트
+                        const testData = ctx.getImageData(offsetX, offsetY, Math.min(10, processedData.width), Math.min(10, processedData.height));
+                        console.log('렌더링 검증 샘플:', Array.from(testData.data.slice(0, 16)));
+                        
+                    } catch (putImageError) {
+                        console.error('putImageData 실패:', putImageError);
+                        // putImageData 실패시 대안: 직접 픽셀 그리기
+                        console.log('대안 렌더링 시도...');
+                        drawImageDataManually(ctx, processedData, offsetX, offsetY);
+                    }
                 } else {
                     console.error('처리된 데이터가 유효하지 않습니다:', processedData);
                     throw new Error('이미지 처리 결과가 유효하지 않습니다');
@@ -2277,34 +2317,137 @@
         }
 
         function applyBasicProcessing(imageData, threshold, lineWidth) {
-            const data = new Uint8ClampedArray(imageData.data);
-            const width = imageData.width;
-            const height = imageData.height;
+            console.log('기본 처리 시작:', { width: imageData.width, height: imageData.height, threshold, lineWidth });
+            
+            try {
+                const data = new Uint8ClampedArray(imageData.data);
+                const width = imageData.width;
+                const height = imageData.height;
 
-            // 1. 그레이스케일 변환
+                console.log('1. 그레이스케일 변환 시작');
+                // 1. 그레이스케일 변환
+                for (let i = 0; i < data.length; i += 4) {
+                    const gray = Math.round(0.299 * data[i] + 0.587 * data[i + 1] + 0.114 * data[i + 2]);
+                    data[i] = gray;
+                    data[i + 1] = gray;
+                    data[i + 2] = gray;
+                }
+                console.log('그레이스케일 변환 완료');
+
+                let processedData = data;
+                
+                // 2-5단계를 안전하게 처리
+                try {
+                    console.log('2. 가우시안 블러 적용');
+                    const blurred = applyGaussianBlur(processedData, width, height, 1.0);
+                    
+                    console.log('3. 엣지 검출');
+                    const edges = applyCannyllikeEdgeDetection(blurred, width, height, threshold);
+                    
+                    console.log('4. 형태학적 연산');
+                    const cleaned = applyMorphologicalOperations(edges, width, height);
+                    
+                    console.log('5. 선 굵기 적용');
+                    if (lineWidth > 1) {
+                        processedData = applyLineThickening(cleaned, width, height, lineWidth);
+                    } else {
+                        processedData = cleaned;
+                    }
+                    
+                } catch (advancedError) {
+                    console.warn('고급 처리 실패, 간단한 처리 사용:', advancedError);
+                    // 고급 처리 실패시 간단한 엣지 검출만 사용
+                    processedData = applySimpleEdgeDetection(data, width, height, threshold);
+                }
+
+                console.log('기본 처리 완료, ImageData 생성');
+                const result = new ImageData(processedData, width, height);
+                console.log('ImageData 생성 완료:', { width: result.width, height: result.height, dataLength: result.data.length });
+                return result;
+                
+            } catch (error) {
+                console.error('기본 처리 중 오류 발생:', error);
+                // 최후의 수단: 원본 데이터를 그대로 반환 (적어도 뭔가는 보이게)
+                console.warn('원본 이미지를 그대로 반환합니다');
+                return imageData;
+            }
+        }
+        
+        // 대안 렌더링 함수 (putImageData 실패시 사용)
+        function drawImageDataManually(ctx, imageData, offsetX, offsetY) {
+            console.log('수동 픽셀 렌더링 시작');
+            try {
+                const data = imageData.data;
+                const width = imageData.width;
+                const height = imageData.height;
+                
+                // ImageData를 임시 캔버스에 그린 후 drawImage로 복사
+                const tempCanvas = document.createElement('canvas');
+                tempCanvas.width = width;
+                tempCanvas.height = height;
+                const tempCtx = tempCanvas.getContext('2d');
+                
+                // 임시 캔버스에 픽셀별로 직접 그리기
+                const tempImageData = tempCtx.createImageData(width, height);
+                for (let i = 0; i < data.length; i++) {
+                    tempImageData.data[i] = data[i];
+                }
+                
+                tempCtx.putImageData(tempImageData, 0, 0);
+                ctx.drawImage(tempCanvas, offsetX, offsetY);
+                
+                console.log('✅ 수동 렌더링 완료');
+            } catch (manualError) {
+                console.error('수동 렌더링도 실패:', manualError);
+                // 최후의 수단: 흰색 사각형이라도 그리기
+                ctx.fillStyle = 'white';
+                ctx.fillRect(offsetX, offsetY, imageData.width, imageData.height);
+                ctx.strokeStyle = 'black';
+                ctx.strokeRect(offsetX, offsetY, imageData.width, imageData.height);
+                ctx.fillStyle = 'black';
+                ctx.font = '20px Arial';
+                ctx.fillText('처리 완료 (표시 오류)', offsetX + 10, offsetY + 30);
+            }
+        }
+
+        // 간단한 엣지 검출 (고급 처리 실패시 사용)
+        function applySimpleEdgeDetection(data, width, height, threshold) {
+            console.log('간단한 엣지 검출 시작');
+            const output = new Uint8ClampedArray(data.length);
+            const gray = new Array(width * height);
+            
+            // 그레이스케일 데이터를 따로 추출
             for (let i = 0; i < data.length; i += 4) {
-                const gray = Math.round(0.299 * data[i] + 0.587 * data[i + 1] + 0.114 * data[i + 2]);
-                data[i] = gray;
-                data[i + 1] = gray;
-                data[i + 2] = gray;
+                gray[i / 4] = data[i]; // 이미 그레이스케일이므로 R값만 사용
             }
-
-            // 2. 가우시안 블러 적용 (노이즈 제거)
-            const blurred = applyGaussianBlur(data, width, height, 1.0);
-
-            // 3. 개선된 엣지 검출 (Canny-like)
-            const edges = applyCannyllikeEdgeDetection(blurred, width, height, threshold);
-
-            // 4. 형태학적 연산 (선 정리)
-            const cleaned = applyMorphologicalOperations(edges, width, height);
-
-            // 5. 선 굵기 적용
-            let final = cleaned;
-            if (lineWidth > 1) {
-                final = applyLineThickening(cleaned, width, height, lineWidth);
+            
+            // 간단한 Sobel 엣지 검출
+            for (let y = 1; y < height - 1; y++) {
+                for (let x = 1; x < width - 1; x++) {
+                    const idx = y * width + x;
+                    
+                    // Sobel X
+                    const gx = (-1 * gray[idx - width - 1]) + (1 * gray[idx - width + 1]) +
+                              (-2 * gray[idx - 1]) + (2 * gray[idx + 1]) +
+                              (-1 * gray[idx + width - 1]) + (1 * gray[idx + width + 1]);
+                    
+                    // Sobel Y
+                    const gy = (-1 * gray[idx - width - 1]) + (-2 * gray[idx - width]) + (-1 * gray[idx - width + 1]) +
+                              (1 * gray[idx + width - 1]) + (2 * gray[idx + width]) + (1 * gray[idx + width + 1]);
+                    
+                    const magnitude = Math.sqrt(gx * gx + gy * gy);
+                    const edge = magnitude > threshold ? 0 : 255; // 흰 배경에 검은 선
+                    
+                    const pixelIdx = idx * 4;
+                    output[pixelIdx] = edge;
+                    output[pixelIdx + 1] = edge;
+                    output[pixelIdx + 2] = edge;
+                    output[pixelIdx + 3] = 255; // 알파
+                }
             }
-
-            return new ImageData(final, width, height);
+            
+            console.log('간단한 엣지 검출 완료');
+            return output;
         }
 
         function applyGaussianBlur(data, width, height, sigma) {
