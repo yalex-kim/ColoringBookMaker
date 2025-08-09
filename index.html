@@ -19,10 +19,13 @@
         const maxRetries = 5; // GitHub Pages에서는 더 많은 재시도 허용
         let openCvLoadTimeout;
         
+        // 더 다양한 CDN과 경량 버전 포함
         const opencvUrls = [
-            'https://docs.opencv.org/4.8.0/opencv.js',
             'https://cdn.jsdelivr.net/npm/opencv.js@4.8.0/opencv.js',
-            'https://unpkg.com/opencv.js@4.8.0/opencv.js'
+            'https://unpkg.com/opencv.js@4.8.0/opencv.js',
+            'https://docs.opencv.org/4.8.0/opencv.js',
+            'https://cdn.jsdelivr.net/npm/@techstark/opencv-js@4.8.0-release.1/opencv.js',
+            'https://cdnjs.cloudflare.com/ajax/libs/opencv.js/4.8.0/opencv.js'
         ];
         
         function loadOpenCV() {
@@ -39,23 +42,45 @@
                     console.log('OpenCV runtime 초기화 완료');
                 };
                 
-                // 여러 CDN을 순차적으로 시도
-                for (let i = 0; i < opencvUrls.length; i++) {
-                    try {
-                        console.log(`OpenCV CDN 시도 ${i + 1}/${opencvUrls.length}: ${opencvUrls[i]}`);
-                        updateOpenCVStatus('loading', `OpenCV 로딩 중... CDN ${i + 1}/${opencvUrls.length}`);
-                        
-                        await loadFromUrl(opencvUrls[i]);
-                        console.log(`OpenCV CDN ${i + 1} 로드 성공`);
-                        resolve();
-                        return;
-                    } catch (error) {
-                        console.warn(`OpenCV CDN ${i + 1} 실패:`, error.message);
-                        if (i === opencvUrls.length - 1) {
-                            reject(new Error('모든 OpenCV CDN 로드 실패'));
+                // 처음 3개는 병렬로 시도 (빠른 로딩), 실패하면 순차 시도
+                try {
+                    console.log('OpenCV 병렬 로딩 시도 중...');
+                    updateOpenCVStatus('loading', 'OpenCV 로딩 중... (고속 모드)');
+                    
+                    // 처음 3개 CDN을 동시에 시도
+                    const parallelPromises = opencvUrls.slice(0, 3).map((url, index) => 
+                        loadFromUrl(url).then(() => {
+                            console.log(`OpenCV 병렬 로딩 성공: CDN ${index + 1}`);
+                            return url;
+                        })
+                    );
+                    
+                    await Promise.race(parallelPromises);
+                    console.log('OpenCV 병렬 로딩 완료');
+                    resolve();
+                    return;
+                    
+                } catch (parallelError) {
+                    console.warn('병렬 로딩 실패, 순차 로딩으로 전환:', parallelError.message);
+                    
+                    // 병렬 실패시 나머지 CDN들을 순차적으로 시도
+                    for (let i = 3; i < opencvUrls.length; i++) {
+                        try {
+                            console.log(`OpenCV CDN 순차 시도 ${i + 1}/${opencvUrls.length}: ${opencvUrls[i]}`);
+                            updateOpenCVStatus('loading', `OpenCV 로딩 중... CDN ${i + 1}/${opencvUrls.length}`);
+                            
+                            await loadFromUrl(opencvUrls[i]);
+                            console.log(`OpenCV CDN ${i + 1} 로드 성공`);
+                            resolve();
+                            return;
+                        } catch (error) {
+                            console.warn(`OpenCV CDN ${i + 1} 실패:`, error.message);
+                            if (i === opencvUrls.length - 1) {
+                                reject(new Error('모든 OpenCV CDN 로드 실패'));
+                            }
+                            // 다음 CDN으로 넘어가기 전 잠깐 대기
+                            await new Promise(resolve => setTimeout(resolve, 1000));
                         }
-                        // 다음 CDN으로 넘어가기 전 잠깐 대기
-                        await new Promise(resolve => setTimeout(resolve, 500));
                     }
                 }
             });
@@ -71,11 +96,11 @@
                 const cacheBuster = Date.now();
                 script.src = `${url}?v=${cacheBuster}`;
                 
-                // 20초 타임아웃 설정
+                // 30초 타임아웃 설정 (더 긴 대기)
                 const timeoutId = setTimeout(() => {
                     script.remove();
                     reject(new Error('OpenCV.js 로딩 타임아웃'));
-                }, 20000);
+                }, 30000);
                 
                 script.onload = () => {
                     clearTimeout(timeoutId);
@@ -1638,9 +1663,26 @@
 
                 // 이미지 처리
                 const imageData = ctx.getImageData(offsetX, offsetY, drawWidth, drawHeight);
-                const processedData = applyImageProcessing(imageData, threshold, lineWidth);
+                let processedData;
                 
-                ctx.putImageData(processedData, offsetX, offsetY);
+                try {
+                    processedData = applyImageProcessing(imageData, threshold, lineWidth);
+                    console.log('이미지 처리 성공');
+                } catch (processingError) {
+                    console.error('이미지 처리 실패, 기본 처리 시도:', processingError);
+                    // 처리 실패시 기본 처리를 직접 호출
+                    processedData = applyBasicProcessing(imageData, threshold, lineWidth);
+                    console.log('기본 처리로 완료');
+                }
+                
+                // 처리된 데이터가 유효한지 확인
+                if (processedData && processedData.data && processedData.width && processedData.height) {
+                    ctx.putImageData(processedData, offsetX, offsetY);
+                    console.log('처리된 이미지 표시 완료');
+                } else {
+                    console.error('처리된 데이터가 유효하지 않습니다:', processedData);
+                    throw new Error('이미지 처리 결과가 유효하지 않습니다');
+                }
 
                 // 색칠 가이드 추가
                 if (includeGuide) {
@@ -1851,11 +1893,25 @@
                 const imageData = ctx.getImageData(offsetX, offsetY, drawWidth, drawHeight);
                 console.log('이미지 데이터 추출 완료:', imageData.width, 'x', imageData.height);
                 
-                const processedData = applyImageProcessing(imageData, threshold, lineWidth);
-                console.log('이미지 처리 완료');
+                let processedData;
+                try {
+                    processedData = applyImageProcessing(imageData, threshold, lineWidth);
+                    console.log('이미지 처리 성공');
+                } catch (processingError) {
+                    console.error('이미지 처리 실패, 기본 처리 시도:', processingError);
+                    // 처리 실패시 기본 처리를 직접 호출
+                    processedData = applyBasicProcessing(imageData, threshold, lineWidth);
+                    console.log('기본 처리로 완료');
+                }
                 
-                ctx.putImageData(processedData, offsetX, offsetY);
-                console.log('처리된 이미지 적용 완료');
+                // 처리된 데이터가 유효한지 확인
+                if (processedData && processedData.data && processedData.width && processedData.height) {
+                    ctx.putImageData(processedData, offsetX, offsetY);
+                    console.log('처리된 이미지 적용 완료');
+                } else {
+                    console.error('처리된 데이터가 유효하지 않습니다:', processedData);
+                    throw new Error('이미지 처리 결과가 유효하지 않습니다');
+                }
 
                 // 색칠 가이드 추가 (원본 이미지를 작게 표시)
                 if (includeGuide) {
@@ -1944,20 +2000,37 @@
                 cvAvailable: typeof cv !== 'undefined'
             });
             
-            if (isOpenCVSafe(imageData.width, imageData.height)) {
+            // OpenCV 사용 가능 여부에 관계없이 빠른 처리를 우선 제공
+            const useOpenCV = isOpenCVSafe(imageData.width, imageData.height);
+            
+            if (useOpenCV) {
                 console.log('OpenCV 처리 모드 사용');
-                return applyOpenCVProcessing(imageData, threshold, lineWidth);
+                try {
+                    return applyOpenCVProcessing(imageData, threshold, lineWidth);
+                } catch (opencvError) {
+                    console.warn('OpenCV 처리 중 오류 발생, 기본 처리로 폴백:', opencvError);
+                    return applyBasicProcessing(imageData, threshold, lineWidth);
+                }
             } else {
-                // OpenCV가 로드되지 않은 경우 기존 알고리즘 사용
-                console.warn('OpenCV가 로드되지 않아 기본 알고리즘을 사용합니다.');
+                console.log('기본 이미지 처리 사용');
                 
-                // 사용자에게 알림 (한 번만)
-                if (!window.basicProcessingNotified) {
-                    window.basicProcessingNotified = true;
-                    console.info('💡 OpenCV를 사용할 수 없어 기본 이미지 처리를 사용합니다. 품질이 다소 다를 수 있습니다.');
+                // OpenCV가 아직 로딩 중이면 백그라운드에서 계속 시도
+                if (openCvLoadAttempts > 0 && openCvLoadAttempts < maxRetries) {
+                    console.info('💡 OpenCV 로딩 중... 기본 처리를 먼저 제공합니다.');
+                } else if (openCvLoadAttempts >= maxRetries) {
+                    console.info('💡 OpenCV 로딩 실패로 기본 이미지 처리를 사용합니다.');
+                } else {
+                    console.info('💡 기본 이미지 처리를 사용합니다.');
                 }
                 
-                return applyBasicProcessing(imageData, threshold, lineWidth);
+                try {
+                    const result = applyBasicProcessing(imageData, threshold, lineWidth);
+                    console.log('기본 처리 성공:', result ? '유효한 결과' : '무효한 결과');
+                    return result;
+                } catch (basicError) {
+                    console.error('기본 처리도 실패:', basicError);
+                    throw basicError;
+                }
             }
         }
 
